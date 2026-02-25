@@ -1,5 +1,5 @@
 """
-export_notebooks.py — Export Jupyter notebooks to HTML and/or PDF.
+export_notebooks.py - Export Jupyter notebooks to HTML and/or PDF.
 
 Walks source directories for .ipynb files, converts them via nbconvert,
 and writes the output into a mirrored folder structure under an export directory.
@@ -22,6 +22,15 @@ Usage:
     # Show code cells in output
     python scripts/export_notebooks.py --with-input
 
+    # Strip print/text output, keep only figures
+    python scripts/export_notebooks.py --no-text-output
+
+    # Exclude exercise and solution sections
+    python scripts/export_notebooks.py --no-exercises
+
+    # "Pure reference" mode: no code, no print output, no exercises
+    python scripts/export_notebooks.py --no-text-output --no-exercises
+
     # CI mode: non-interactive, fail on first error
     python scripts/export_notebooks.py --ci
 """
@@ -29,8 +38,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
+import json
+import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # ============================================================================
@@ -47,9 +60,150 @@ DEFAULTS = {
 
 VALID_FORMATS = ("html", "pdf")
 
+# Heading patterns that mark exercise / solution cells to exclude.
+# Matched line-by-line against markdown cell source (case-insensitive).
+EXERCISE_HEADING_PATTERNS: list[str] = [
+    r"^#+\s*Verständnis",      # "## Verständnis-Check"
+    r"^#+\s*Lösungen?\b",      # "### Lösungen"
+]
+
+# Mime types considered visual (kept when stripping text output)
+VISUAL_MIME_TYPES = {
+    "image/png", "image/jpeg", "image/svg+xml", "image/gif",
+    "text/html",  # Rendered outputs like DataFrames, widgets
+}
+
+# CSS injected into exported HTML to fix table rendering (MathJax wrapping)
+TABLE_FIX_CSS = """
+<style>
+/* Prevent MathJax from wrapping inside table cells */
+table { width: 100%; border-collapse: collapse; table-layout: auto; }
+th, td { padding: 0.5rem 0.75rem; vertical-align: top; border: 1px solid #ddd; }
+th { background: #f5f5f5; font-weight: 600; }
+td .MathJax, th .MathJax { white-space: nowrap; display: inline !important; }
+td mjx-container, th mjx-container { white-space: nowrap !important; display: inline !important; }
+</style>
+"""
+
 
 # ============================================================================
 # EXPORT LOGIC
+# ============================================================================
+
+
+# ============================================================================
+# NOTEBOOK PREPROCESSING
+# ============================================================================
+
+
+def _is_exercise_cell(source: str) -> bool:
+    """Check if a markdown cell contains an exercise or solution heading."""
+    for line in source.split("\n"):
+        line = line.strip()
+        for pattern in EXERCISE_HEADING_PATTERNS:
+            if re.match(pattern, line, re.IGNORECASE):
+                return True
+    return False
+
+
+def _filter_text_outputs(cell: dict) -> dict:
+    """
+    Remove text-only outputs from a code cell.
+
+    Strips stream outputs (print/stdout/stderr) and error tracebacks.
+    For display_data / execute_result, keeps only outputs that contain
+    visual content (images, HTML) and drops their text/plain companions.
+    """
+    cell = copy.deepcopy(cell)
+    filtered = []
+
+    for output in cell.get("outputs", []):
+        output_type = output.get("output_type", "")
+
+        # Always drop print output and errors
+        if output_type in ("stream", "error"):
+            continue
+
+        if output_type in ("display_data", "execute_result"):
+            data = output.get("data", {})
+            # Keep only if it carries visual content
+            if any(mime in data for mime in VISUAL_MIME_TYPES):
+                # Strip the text/plain companion (e.g. "<Figure size 640x480>")
+                cleaned_data = {k: v for k, v in data.items() if k != "text/plain"}
+                output = {**output, "data": cleaned_data}
+                filtered.append(output)
+            # else: text-only result → drop
+            continue
+
+        # Unknown output type → keep as-is
+        filtered.append(output)
+
+    cell["outputs"] = filtered
+    return cell
+
+
+def preprocess_notebook(
+    notebook_path: Path,
+    *,
+    no_text_output: bool = False,
+    no_exercises: bool = False,
+) -> Path | None:
+    """
+    Apply content filters to a notebook and write the result to a temp file.
+
+    Returns the temp file Path if preprocessing was performed, or None if
+    no filters were active (so the original file can be exported directly).
+    """
+    if not no_text_output and not no_exercises:
+        return None
+
+    with open(notebook_path, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    filtered_cells = []
+    for cell in nb.get("cells", []):
+        cell_type = cell.get("cell_type", "")
+
+        # Optionally skip exercise / solution markdown cells
+        if no_exercises and cell_type == "markdown":
+            source = "".join(cell.get("source", []))
+            if _is_exercise_cell(source):
+                continue
+
+        # Optionally strip text-only outputs from code cells
+        if no_text_output and cell_type == "code":
+            cell = _filter_text_outputs(cell)
+
+        filtered_cells.append(cell)
+
+    nb["cells"] = filtered_cells
+
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".ipynb", delete=False, mode="w", encoding="utf-8",
+    )
+    json.dump(nb, tmp)
+    tmp.close()
+    return Path(tmp.name)
+
+
+# ============================================================================
+# HTML POST-PROCESSING
+# ============================================================================
+
+
+def _inject_table_css(html_path: Path) -> None:
+    """Inject table-fix CSS into an exported HTML file (before </head>)."""
+    if not html_path.exists():
+        return
+    html = html_path.read_text(encoding="utf-8")
+    if "/* Prevent MathJax from wrapping inside table cells */" in html:
+        return  # already injected
+    html = html.replace("</head>", TABLE_FIX_CSS + "\n</head>", 1)
+    html_path.write_text(html, encoding="utf-8")
+
+
+# ============================================================================
+# DISCOVERY
 # ============================================================================
 
 
@@ -67,9 +221,15 @@ def export_notebook(
     output_dir: Path,
     fmt: str,
     no_input: bool,
+    *,
+    no_text_output: bool = False,
+    no_exercises: bool = False,
 ) -> bool:
     """
     Export a single notebook to the given format.
+
+    Optionally preprocesses the notebook to strip text outputs and/or
+    exercise cells before conversion.
 
     Returns True on success, False on failure.
     """
@@ -78,7 +238,13 @@ def export_notebook(
     dest_dir = output_dir / fmt / relative.parent
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build command — order matters: flags first, then positional notebook path last
+    # Preprocess notebook if any content filters are active
+    processed = preprocess_notebook(
+        notebook, no_text_output=no_text_output, no_exercises=no_exercises,
+    )
+    notebook_to_export = processed if processed else notebook
+
+    # Build command - order matters: flags first, then positional notebook path last
     export_format = "webpdf" if fmt == "pdf" else fmt
 
     cmd = [sys.executable, "-m", "nbconvert", "--to", export_format]
@@ -89,7 +255,12 @@ def export_notebook(
     if fmt == "pdf":
         cmd.append("--allow-chromium-download")
 
-    cmd.extend(["--output-dir", str(dest_dir), str(notebook)])
+    # Explicit --output keeps the original notebook name even when exporting a temp file
+    cmd.extend([
+        "--output", notebook.stem,
+        "--output-dir", str(dest_dir),
+        str(notebook_to_export),
+    ])
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -97,6 +268,10 @@ def export_notebook(
             print(f"  FAIL  {relative} → {fmt}")
             print(f"        {result.stderr.strip()}")
             return False
+        # Post-process HTML to inject table fix CSS
+        if fmt == "html":
+            _inject_table_css(dest_dir / f"{notebook.stem}.html")
+
         print(f"  OK    {relative} → {fmt}")
         return True
     except subprocess.TimeoutExpired:
@@ -105,6 +280,10 @@ def export_notebook(
     except Exception as e:
         print(f"  ERROR {relative} → {fmt}: {e}")
         return False
+    finally:
+        # Clean up temp file from preprocessing
+        if processed and processed.exists():
+            processed.unlink()
 
 
 # ============================================================================
@@ -146,6 +325,18 @@ def main() -> int:
         help="Show code cells in output (overrides --no-input)",
     )
     parser.add_argument(
+        "--no-text-output",
+        action="store_true",
+        default=False,
+        help="Strip text/print output from code cells, keep only figures and rich HTML",
+    )
+    parser.add_argument(
+        "--no-exercises",
+        action="store_true",
+        default=False,
+        help="Exclude exercise and solution sections (Verständnis-Check, Lösungen)",
+    )
+    parser.add_argument(
         "--ci",
         action="store_true",
         default=False,
@@ -176,6 +367,8 @@ def main() -> int:
     print(f"  Output:  {output_dir}")
     print(f"  Formats: {', '.join(args.formats)}")
     print(f"  Code:    {'hidden' if no_input else 'visible'}")
+    print(f"  Text output: {'stripped' if args.no_text_output else 'included'}")
+    print(f"  Exercises:   {'excluded' if args.no_exercises else 'included'}")
     print(f"  Found:   {len(notebooks)} notebook(s)")
     print()
 
@@ -187,7 +380,11 @@ def main() -> int:
         print(f"── {fmt.upper()} ──")
         for nb in notebooks:
             total += 1
-            success = export_notebook(nb, source_dir, output_dir, fmt, no_input)
+            success = export_notebook(
+                nb, source_dir, output_dir, fmt, no_input,
+                no_text_output=args.no_text_output,
+                no_exercises=args.no_exercises,
+            )
             if not success:
                 failed += 1
         print()

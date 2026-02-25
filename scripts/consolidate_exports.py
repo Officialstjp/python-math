@@ -1,5 +1,5 @@
 """
-consolidate_exports.py — Merge individual notebook HTML exports into a single reference file.
+consolidate_exports.py - Merge individual notebook HTML exports into a single reference file.
 
 Reads the exported HTML files from exports/html/, extracts their body content,
 and combines them into one self-contained HTML document with:
@@ -29,10 +29,10 @@ from pathlib import Path
 # ============================================================================
 
 DEFAULTS = {
-    "html_dir": "exports/html",
-    "output_dir": "exports",
+    "html_dir": "exports_clean/html",
+    "output_dir": "exports_clean",
     "output_name": "reference.html",
-    "title": "Mathematik — Gesamtreferenz",
+    "title": "Mathematik - Gesamtreferenz",
 }
 
 # Human-readable chapter names (folder name → display name)
@@ -361,6 +361,33 @@ main.content {{
 /* ── Notebook content overrides ────────────────────────────────────── */
 .notebook-content .jp-Cell {{ margin-bottom: 0.5rem; }}
 .notebook-content img {{ max-width: 100%; height: auto; }}
+
+/* ── Table fixes (prevent MathJax wrapping in narrow columns) ──────── */
+.notebook-content table {{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}}
+.notebook-content th,
+.notebook-content td {{
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  border: 1px solid #ddd;
+}}
+.notebook-content th {{
+  background: #f5f5f5;
+  font-weight: 600;
+}}
+.notebook-content td .MathJax,
+.notebook-content th .MathJax {{
+  white-space: nowrap;
+  display: inline !important;
+}}
+.notebook-content td mjx-container,
+.notebook-content th mjx-container {{
+  white-space: nowrap !important;
+  display: inline !important;
+}}
 
 /* ── Print styles ──────────────────────────────────────────────────── */
 @media print {{
