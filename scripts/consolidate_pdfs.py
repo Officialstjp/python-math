@@ -50,7 +50,7 @@ CHAPTER_NAMES: dict[str, str] = {
     "05_Vektoren_Matrizen": "Vektoren & Matrizen",
     "06_Folgen_Reihen": "Folgen & Reihen",
     "07_Analysis": "Analysis",
-    "08_Stochastik": "Stochastik",
+    "08_Statistik_und_Wahrscheinlichkeit": "Statistik & Wahrscheinlichkeit",
     "en": "English",
 }
 
