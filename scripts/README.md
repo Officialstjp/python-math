@@ -26,7 +26,7 @@ pip install nbconvert pypdf reportlab
 
 ## export_notebooks.py
 
-Converts all `.ipynb` files under a source directory to HTML and/or PDF, mirroring the folder structure into an output directory.
+Converts all `.ipynb` files under a source directory to HTML, Markdown, and/or PDF, mirroring the folder structure into an output directory. Exports run in parallel by default.
 
 ### Usage
 
@@ -40,18 +40,22 @@ python scripts/export_notebooks.py [OPTIONS]
 |------|---------|-------------|
 | `--source-dir DIR` | `Foundations` | Root directory containing notebooks |
 | `--output-dir DIR` | `exports` | Root output directory for exports |
-| `--formats {html,pdf}` | `html` | Export formats (space-separated) |
+| `--formats {html,markdown,pdf}` | `html` | Export formats (space-separated) |
 | `--no-input` | `True` | Hide code cells in output |
 | `--with-input` | `False` | Show code cells (overrides `--no-input`) |
 | `--no-text-output` | `False` | Strip print/stream output, keep only figures and rich HTML |
 | `--no-exercises` | `False` | Exclude exercise & solution sections (Verständnis-Check, Lösungen) |
 | `--ci` | `False` | CI mode: exit non-zero on any failure |
+| `--workers N` | `4` | Number of parallel export workers (use 1 to disable) |
 
 ### Examples
 
 ```powershell
 # Default: export all notebooks to HTML, code hidden
 python scripts/export_notebooks.py
+
+# Export HTML and Markdown
+python scripts/export_notebooks.py --formats html markdown
 
 # Export both HTML and PDF
 python scripts/export_notebooks.py --formats html pdf
@@ -61,6 +65,9 @@ python scripts/export_notebooks.py --no-text-output --no-exercises
 
 # Export a single chapter with visible code
 python scripts/export_notebooks.py --source-dir Foundations/00_Grundlagen --with-input
+
+# Use 8 parallel workers for faster export
+python scripts/export_notebooks.py --workers 8
 ```
 
 ### Output Structure
@@ -72,6 +79,10 @@ exports/
       01_Zahlenmengen_und_Rechenarten.html
       ...
     01_Algebra/
+      ...
+  markdown/
+    00_Grundlagen/
+      01_Zahlenmengen_und_Rechenarten.md
       ...
   pdf/
     00_Grundlagen/

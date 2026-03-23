@@ -1,8 +1,9 @@
 """
-export_notebooks.py - Export Jupyter notebooks to HTML and/or PDF.
+export_notebooks.py - Export Jupyter notebooks to HTML, Markdown, and/or PDF.
 
 Walks source directories for .ipynb files, converts them via nbconvert,
 and writes the output into a mirrored folder structure under an export directory.
+Exports run in parallel by default for faster throughput.
 
 Requires the repository venv to be activated first:
     .\\venv\\Scripts\\activate
@@ -12,6 +13,9 @@ Requires the repository venv to be activated first:
 Usage:
     # Export HTML only (default)
     python scripts/export_notebooks.py
+
+    # Export HTML and Markdown
+    python scripts/export_notebooks.py --formats html markdown
 
     # Export both HTML and PDF
     python scripts/export_notebooks.py --formats html pdf
@@ -33,6 +37,9 @@ Usage:
 
     # CI mode: non-interactive, fail on first error
     python scripts/export_notebooks.py --ci
+
+    # Control parallelism (default: 4 workers, use 1 to disable)
+    python scripts/export_notebooks.py --workers 8
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # ============================================================================
@@ -56,9 +64,10 @@ DEFAULTS = {
     "formats": ["html"],
     "no_input": True,
     "notebook_glob": "**/*.ipynb",
+    "workers": 4,
 }
 
-VALID_FORMATS = ("html", "pdf")
+VALID_FORMATS = ("html", "markdown", "pdf")
 
 # Heading patterns that mark exercise / solution cells to exclude.
 # Matched line-by-line against markdown cell source (case-insensitive).
@@ -187,8 +196,33 @@ def preprocess_notebook(
 
 
 # ============================================================================
-# HTML POST-PROCESSING
+# POST-PROCESSING
 # ============================================================================
+
+
+def _fix_markdown_image_paths(md_path: Path) -> None:
+    """Rewrite absolute image paths in exported markdown to be relative."""
+    if not md_path.exists():
+        return
+    text = md_path.read_text(encoding="utf-8")
+    md_dir = md_path.parent
+
+    def _make_relative(match: re.Match) -> str:
+        alt, raw_path = match.group(1), match.group(2)
+        # URL-decode percent-encoded characters (e.g. %3A → :)
+        from urllib.parse import unquote
+        decoded = unquote(raw_path).replace("/", "\\")
+        try:
+            abs_path = Path(decoded)
+            if abs_path.is_absolute():
+                rel = abs_path.relative_to(md_dir)
+                return f"![{alt}]({rel.as_posix()})"
+        except (ValueError, OSError):
+            pass
+        return match.group(0)
+
+    text = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", _make_relative, text)
+    md_path.write_text(text, encoding="utf-8")
 
 
 def _inject_table_css(html_path: Path) -> None:
@@ -255,6 +289,11 @@ def export_notebook(
     if fmt == "pdf":
         cmd.append("--allow-chromium-download")
 
+    # For markdown, place extracted images in a sibling folder (relative path
+    # so the markdown file references images with relative links, not absolute)
+    if fmt == "markdown":
+        cmd.extend(["--NbConvertApp.output_files_dir", f"{notebook.stem}_files"])
+
     # Explicit --output keeps the original notebook name even when exporting a temp file
     cmd.extend([
         "--output", notebook.stem,
@@ -271,6 +310,10 @@ def export_notebook(
         # Post-process HTML to inject table fix CSS
         if fmt == "html":
             _inject_table_css(dest_dir / f"{notebook.stem}.html")
+
+        # Post-process markdown to fix absolute image paths
+        if fmt == "markdown":
+            _fix_markdown_image_paths(dest_dir / f"{notebook.stem}.md")
 
         print(f"  OK    {relative} → {fmt}")
         return True
@@ -342,6 +385,12 @@ def main() -> int:
         default=False,
         help="CI mode: exit with non-zero code on any failure",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULTS["workers"],
+        help=f"Number of parallel export workers (default: {DEFAULTS['workers']}, use 1 to disable)",
+    )
 
     args = parser.parse_args()
 
@@ -369,6 +418,7 @@ def main() -> int:
     print(f"  Code:    {'hidden' if no_input else 'visible'}")
     print(f"  Text output: {'stripped' if args.no_text_output else 'included'}")
     print(f"  Exercises:   {'excluded' if args.no_exercises else 'included'}")
+    print(f"  Workers: {args.workers}")
     print(f"  Found:   {len(notebooks)} notebook(s)")
     print()
 
@@ -378,15 +428,36 @@ def main() -> int:
 
     for fmt in args.formats:
         print(f"── {fmt.upper()} ──")
-        for nb in notebooks:
-            total += 1
-            success = export_notebook(
-                nb, source_dir, output_dir, fmt, no_input,
-                no_text_output=args.no_text_output,
-                no_exercises=args.no_exercises,
-            )
-            if not success:
-                failed += 1
+        fmt_notebooks = list(notebooks)
+        fmt_total = len(fmt_notebooks)
+
+        if args.workers > 1 and fmt_total > 1:
+            # Parallel export
+            with ThreadPoolExecutor(max_workers=args.workers) as pool:
+                futures = {
+                    pool.submit(
+                        export_notebook,
+                        nb, source_dir, output_dir, fmt, no_input,
+                        no_text_output=args.no_text_output,
+                        no_exercises=args.no_exercises,
+                    ): nb
+                    for nb in fmt_notebooks
+                }
+                for future in as_completed(futures):
+                    total += 1
+                    if not future.result():
+                        failed += 1
+        else:
+            # Sequential fallback
+            for nb in fmt_notebooks:
+                total += 1
+                success = export_notebook(
+                    nb, source_dir, output_dir, fmt, no_input,
+                    no_text_output=args.no_text_output,
+                    no_exercises=args.no_exercises,
+                )
+                if not success:
+                    failed += 1
         print()
 
     # ── Summary ────────────────────────────────────────────────────────────
