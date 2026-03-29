@@ -29,8 +29,8 @@ from pathlib import Path
 # ============================================================================
 
 DEFAULTS = {
-    "html_dir": "exports_clean/html",
-    "output_dir": "exports_clean",
+    "html_dir": "exports/html",
+    "output_dir": "exports",
     "output_name": "reference.html",
     "title": "Mathematik - Gesamtreferenz",
 }
@@ -46,7 +46,7 @@ CHAPTER_NAMES: dict[str, str] = {
     "06_Folgen_Reihen": "Folgen & Reihen",
     "07_Analysis": "Analysis",
     "08_Statistik_und_Wahrscheinlichkeit": "Statistik & Wahrscheinlichkeit",
-    "en": "English",
+    "99_Glossare": "Glossare",
 }
 
 

@@ -8,8 +8,6 @@ Exports run in parallel by default for faster throughput.
 Requires the repository venv to be activated first:
     .\\venv\\Scripts\\activate
 
-> Currently only HTML export works, havent figured PDF export out yet, not relevant at the moment.
-
 Usage:
     # Export HTML only (default)
     python scripts/export_notebooks.py
@@ -91,6 +89,72 @@ th, td { padding: 0.5rem 0.75rem; vertical-align: top; border: 1px solid #ddd; }
 th { background: #f5f5f5; font-weight: 600; }
 td .MathJax, th .MathJax { white-space: nowrap; display: inline !important; }
 td mjx-container, th mjx-container { white-space: nowrap !important; display: inline !important; }
+/* Hide empty code-cell input areas (produced by per-cell hide-input tag) */
+div.input:has(.highlight pre > span:only-child:empty) { display: none; }
+div.jp-Cell-inputWrapper:has(pre > span:only-child:empty) { display: none; }
+</style>
+"""
+
+# Print-optimised CSS injected into HTML before Playwright renders to PDF.
+PDF_PRINT_CSS = """
+<style type="text/css">
+/* ── 1. Compact fonts ──────────────────────────────────────────── */
+:root {
+  --jp-content-font-size1: 9pt;
+  --jp-content-font-size0: 8pt;
+  --jp-code-font-size: 7.5pt;
+  --jp-content-line-height: 1.4;
+  --jp-content-heading-line-height: 1.2;
+}
+body.jp-Notebook {
+  font-size: 9pt;
+  line-height: 1.4;
+  padding: 0 0.15in;
+}
+.jp-RenderedHTMLCommon h1 { font-size: 1.5em; margin-top: 0.5em; margin-bottom: 0.25em; }
+.jp-RenderedHTMLCommon h2 { font-size: 1.3em; margin-top: 0.45em; margin-bottom: 0.2em; }
+.jp-RenderedHTMLCommon h3 { font-size: 1.12em; margin-top: 0.35em; margin-bottom: 0.15em; }
+.jp-RenderedHTMLCommon h4 { font-size: 1.02em; margin-top: 0.3em; margin-bottom: 0.1em; }
+.jp-RenderedHTMLCommon p { margin-top: 0.25em; margin-bottom: 0.25em; }
+.jp-RenderedHTMLCommon ul,
+.jp-RenderedHTMLCommon ol { margin-top: 0.15em; margin-bottom: 0.15em; }
+.jp-RenderedHTMLCommon li { margin-top: 0.05em; margin-bottom: 0.05em; }
+.jp-RenderedText pre,
+.cm-editor.cm-s-jupyter .highlight pre {
+  font-size: var(--jp-code-font-size);
+  line-height: 1.35;
+}
+.jp-Cell { padding-top: 3px; padding-bottom: 3px; }
+.jp-Cell-inputWrapper,
+.jp-Cell-outputWrapper { padding-top: 1px; padding-bottom: 1px; }
+
+/* ── 2. Table formula layout ───────────────────────────────────── */
+table { table-layout: auto; width: auto; max-width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+th, td { padding: 0.2rem 0.4rem; vertical-align: top; border: 1px solid #ddd; }
+th { background: #f5f5f5; font-weight: 600; }
+/* Prevent MathJax CHTML from using stacked block layout inside table cells */
+td .MathJax_CHTML, th .MathJax_CHTML { white-space: nowrap !important; display: inline !important; }
+td .MathJax_CHTML.mjx-full-width { width: auto !important; }
+td .mjx-math, th .mjx-math { width: auto !important; }
+td .mjx-mrow, th .mjx-mrow { width: auto !important; }
+td .mjx-stack, th .mjx-stack { display: inline !important; vertical-align: middle !important; }
+td .mjx-block, th .mjx-block { display: inline !important; }
+/* Also handle MathJax 3 (mjx-container) */
+td mjx-container, th mjx-container { display: inline !important; white-space: nowrap !important; }
+/* Keep entire cell content on one line when it contains math */
+td:has(.MathJax_CHTML), td:has(mjx-container) { white-space: nowrap; }
+
+/* ── 3. Smart page breaks ──────────────────────────────────────── */
+@page { margin: 0.6in 0.5in; }
+table { break-inside: avoid; }
+h1, h2, h3, h4,
+.jp-RenderedHTMLCommon h1, .jp-RenderedHTMLCommon h2,
+.jp-RenderedHTMLCommon h3, .jp-RenderedHTMLCommon h4 { break-after: avoid; }
+p, li { orphans: 3; widows: 3; }
+.jp-OutputArea-output img, .jp-OutputArea-output svg { break-inside: avoid; }
+
+/* ── 4. Image sizing for print ─────────────────────────────────── */
+.jp-OutputArea-output img { max-width: 100%; height: auto; }
 </style>
 """
 
@@ -113,6 +177,19 @@ def _is_exercise_cell(source: str) -> bool:
             if re.match(pattern, line, re.IGNORECASE):
                 return True
     return False
+
+
+def _should_show_input(tags: list[str], no_input: bool) -> bool:
+    """Resolve per-cell input visibility from tags and the global default.
+
+    Tags ``show-input`` / ``hide-input`` override the global *no_input* flag.
+    Untagged cells follow the global default.
+    """
+    if "show-input" in tags:
+        return True
+    if "hide-input" in tags:
+        return False
+    return not no_input
 
 
 def _filter_text_outputs(cell: dict) -> dict:
@@ -154,6 +231,7 @@ def _filter_text_outputs(cell: dict) -> dict:
 def preprocess_notebook(
     notebook_path: Path,
     *,
+    no_input: bool = True,
     no_text_output: bool = False,
     no_exercises: bool = False,
 ) -> Path | None:
@@ -162,14 +240,26 @@ def preprocess_notebook(
 
     Returns the temp file Path if preprocessing was performed, or None if
     no filters were active (so the original file can be exported directly).
+
+    Per-cell input visibility
+    -------------------------
+    Cells tagged ``show-input`` have their source inserted as a fenced
+    markdown code block (visible even with ``--no-input``).  Cells tagged
+    ``hide-input`` have their source cleared (hidden even with
+    ``--with-input``).  Untagged cells follow the *no_input* global default.
     """
-    if not no_text_output and not no_exercises:
+    with open(notebook_path, "r", encoding="utf-8-sig") as f:
+        raw = f.read()
+
+    has_input_tags = "show-input" in raw or "hide-input" in raw
+
+    # Skip preprocessing when no filters or per-cell tags need to be applied
+    if not no_text_output and not no_exercises and not has_input_tags:
         return None
 
-    with open(notebook_path, "r", encoding="utf-8") as f:
-        nb = json.load(f)
-
+    nb = json.loads(raw)
     filtered_cells = []
+
     for cell in nb.get("cells", []):
         cell_type = cell.get("cell_type", "")
 
@@ -182,6 +272,29 @@ def preprocess_notebook(
         # Optionally strip text-only outputs from code cells
         if no_text_output and cell_type == "code":
             cell = _filter_text_outputs(cell)
+
+        # Per-cell input visibility (only when tags are present)
+        if cell_type == "code" and has_input_tags:
+            tags = cell.get("metadata", {}).get("tags", [])
+            source = cell.get("source", "")
+            if isinstance(source, list):
+                source = "".join(source)
+
+            show = _should_show_input(tags, no_input)
+
+            if no_input and show and source.strip():
+                # Global=hide, cell=show: insert markdown code block
+                code = source.rstrip("\n")
+                md_cell = {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": f"```python\n{code}\n```",
+                }
+                filtered_cells.append(md_cell)
+            elif not no_input and not show:
+                # Global=show, cell=hide: clear source
+                cell = copy.deepcopy(cell)
+                cell["source"] = ""
 
         filtered_cells.append(cell)
 
@@ -236,6 +349,47 @@ def _inject_table_css(html_path: Path) -> None:
     html_path.write_text(html, encoding="utf-8")
 
 
+def _html_to_pdf(html_path: Path, pdf_path: Path) -> None:
+    """Convert an HTML file to PDF via Playwright Chromium with print CSS injected."""
+    html = html_path.read_text(encoding="utf-8")
+    # Inject print-optimised CSS before </head>
+    html = html.replace("</head>", PDF_PRINT_CSS + "\n</head>", 1)
+
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".html", delete=False, mode="w", encoding="utf-8",
+    )
+    tmp.write(html)
+    tmp.close()
+
+    try:
+        import asyncio
+        from playwright.async_api import async_playwright
+
+        async def _render():
+            async with async_playwright() as p:
+                browser = await p.chromium.launch()
+                page = await browser.new_page()
+                await page.emulate_media(media="print")
+                await page.goto(Path(tmp.name).as_uri(), wait_until="networkidle")
+                pdf_bytes = await page.pdf(print_background=True)
+                await browser.close()
+            return pdf_bytes
+
+        # On Windows, Playwright needs ProactorEventLoop
+        if sys.platform == "win32":
+            loop = asyncio.ProactorEventLoop()
+        else:
+            loop = asyncio.new_event_loop()
+        try:
+            pdf_bytes = loop.run_until_complete(_render())
+        finally:
+            loop.close()
+
+        pdf_path.write_bytes(pdf_bytes)
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
+
+
 # ============================================================================
 # DISCOVERY
 # ============================================================================
@@ -272,14 +426,16 @@ def export_notebook(
     dest_dir = output_dir / fmt / relative.parent
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Preprocess notebook if any content filters are active
+    # Preprocess notebook if any content filters or per-cell tags are active
     processed = preprocess_notebook(
-        notebook, no_text_output=no_text_output, no_exercises=no_exercises,
+        notebook, no_input=no_input,
+        no_text_output=no_text_output, no_exercises=no_exercises,
     )
     notebook_to_export = processed if processed else notebook
 
     # Build command - order matters: flags first, then positional notebook path last
-    export_format = "webpdf" if fmt == "pdf" else fmt
+    # For PDF: first export to HTML, then convert with Playwright (to inject print CSS).
+    export_format = "html" if fmt == "pdf" else fmt
 
     cmd = [sys.executable, "-m", "nbconvert", "--to", export_format]
 
@@ -314,6 +470,13 @@ def export_notebook(
         # Post-process markdown to fix absolute image paths
         if fmt == "markdown":
             _fix_markdown_image_paths(dest_dir / f"{notebook.stem}.md")
+
+        # PDF: convert the intermediate HTML to PDF via Playwright, then clean up
+        if fmt == "pdf":
+            html_file = dest_dir / f"{notebook.stem}.html"
+            pdf_file = dest_dir / f"{notebook.stem}.pdf"
+            _html_to_pdf(html_file, pdf_file)
+            html_file.unlink(missing_ok=True)
 
         print(f"  OK    {relative} → {fmt}")
         return True

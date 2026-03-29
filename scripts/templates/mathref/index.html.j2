@@ -1,0 +1,129 @@
+{%- extends 'lab/index.html.j2' -%}
+
+{% block extra_css %}
+<style type="text/css">
+/* ================================================================
+   mathref – print-optimised stylesheet for PDF reference exports
+   ================================================================ */
+
+/* ── 1. Compact fonts ──────────────────────────────────────────── */
+:root {
+  --jp-content-font-size1: 10pt;
+  --jp-content-font-size0: 9pt;
+  --jp-code-font-size: 8.5pt;
+  --jp-content-line-height: 1.45;
+  --jp-content-heading-line-height: 1.25;
+}
+
+body.jp-Notebook {
+  font-size: 10pt;
+  line-height: 1.45;
+  padding: 0 0.25in;
+}
+
+/* Scale heading sizes proportionally */
+.jp-RenderedHTMLCommon h1 { font-size: 1.6em; margin-top: 0.6em; margin-bottom: 0.3em; }
+.jp-RenderedHTMLCommon h2 { font-size: 1.35em; margin-top: 0.5em; margin-bottom: 0.25em; }
+.jp-RenderedHTMLCommon h3 { font-size: 1.15em; margin-top: 0.4em; margin-bottom: 0.2em; }
+.jp-RenderedHTMLCommon h4 { font-size: 1.05em; margin-top: 0.35em; margin-bottom: 0.15em; }
+
+/* Tighter paragraph spacing */
+.jp-RenderedHTMLCommon p { margin-top: 0.3em; margin-bottom: 0.3em; }
+.jp-RenderedHTMLCommon ul,
+.jp-RenderedHTMLCommon ol { margin-top: 0.2em; margin-bottom: 0.2em; }
+.jp-RenderedHTMLCommon li { margin-top: 0.1em; margin-bottom: 0.1em; }
+
+/* Code cells */
+.jp-RenderedText pre,
+.cm-editor.cm-s-jupyter .highlight pre {
+  font-size: var(--jp-code-font-size);
+  line-height: 1.4;
+}
+
+/* Reduce cell vertical padding */
+.jp-Cell {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.jp-Cell-inputWrapper,
+.jp-Cell-outputWrapper {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* ── 2. Table formula layout ───────────────────────────────────── */
+table {
+  table-layout: auto;
+  width: auto;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+
+th, td {
+  padding: 0.3rem 0.5rem;
+  vertical-align: top;
+  border: 1px solid #ddd;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+/* Prevent MathJax from being squished inside table cells */
+td mjx-container,
+th mjx-container {
+  display: inline-block !important;
+  white-space: nowrap !important;
+  min-width: max-content;
+}
+
+td .MathJax,
+th .MathJax {
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+/* ── 3. Smart page breaks ──────────────────────────────────────── */
+@page {
+  margin: 0.6in 0.5in;
+}
+
+/* Keep tables together when possible */
+table { break-inside: avoid; }
+
+/* Headings always stay with the content that follows */
+h1, h2, h3, h4,
+.jp-RenderedHTMLCommon h1,
+.jp-RenderedHTMLCommon h2,
+.jp-RenderedHTMLCommon h3,
+.jp-RenderedHTMLCommon h4 {
+  break-after: avoid;
+}
+
+/* Keep each cell's content together (input + output) */
+.jp-Cell { break-inside: avoid; }
+
+/* Keep markdown cells with their following content */
+.jp-MarkdownCell { break-after: avoid; }
+
+/* Prevent widow/orphan lines */
+p, li {
+  orphans: 3;
+  widows: 3;
+}
+
+/* Never break inside an output figure */
+.jp-OutputArea-output img,
+.jp-OutputArea-output svg {
+  break-inside: avoid;
+}
+
+/* ── 4. Image sizing for print ─────────────────────────────────── */
+.jp-OutputArea-output img {
+  max-width: 100%;
+  height: auto;
+}
+</style>
+{% endblock extra_css %}
