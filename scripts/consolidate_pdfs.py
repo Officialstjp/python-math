@@ -18,6 +18,7 @@ Usage:
     python scripts/consolidate_pdfs.py
     python scripts/consolidate_pdfs.py --output-dir exports --title "Mathematik Referenz"
     python scripts/consolidate_pdfs.py --no-cover   # skip title / TOC pages
+    python scripts/consolidate_pdfs.py --config scripts/export_profile.toml
 """
 
 from __future__ import annotations
@@ -29,16 +30,19 @@ from pathlib import Path
 
 from pypdf import PdfReader, PdfWriter
 
+from export_profile import (
+    CONSOLIDATE_PDF_DEFAULTS,
+    PROFILE_LOAD_EXCEPTIONS,
+    bootstrap_profile_settings,
+    format_profile_path,
+    resolve_repo_path,
+)
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-DEFAULTS = {
-    "pdf_dir": "exports_clean/pdf",
-    "output_dir": "exports_clean",
-    "output_name": "reference.pdf",
-    "title": "Mathematik - Gesamtreferenz",
-}
+DEFAULTS = CONSOLIDATE_PDF_DEFAULTS
 
 # Human-readable chapter names (folder name → display name)
 CHAPTER_NAMES: dict[str, str] = {
@@ -85,14 +89,56 @@ def discover_pdf_files(pdf_dir: Path) -> dict[str, list[Path]]:
     for pdf_file in sorted(pdf_dir.rglob("*.pdf")):
         rel = pdf_file.relative_to(pdf_dir)
         parts = rel.parts
+        if len(parts) == 1:
+            # Root-level PDFs are usually previous consolidated references.
+            continue
         if len(parts) > 2:
             chapter_key = "/".join(parts[:-1])
         elif len(parts) == 2:
             chapter_key = parts[0]
-        else:
-            chapter_key = "_root"
         chapters.setdefault(chapter_key, []).append(pdf_file)
     return chapters
+
+
+def exclude_pdf_file(
+    chapters: dict[str, list[Path]],
+    excluded_file: Path,
+) -> dict[str, list[Path]]:
+    """Remove a known output file from discovered source PDFs."""
+    try:
+        excluded = excluded_file.resolve()
+    except OSError:
+        excluded = excluded_file.absolute()
+
+    filtered: dict[str, list[Path]] = {}
+    for chapter_key, files in chapters.items():
+        kept = []
+        for file in files:
+            try:
+                candidate = file.resolve()
+            except OSError:
+                candidate = file.absolute()
+            if candidate != excluded:
+                kept.append(file)
+        if kept:
+            filtered[chapter_key] = kept
+    return filtered
+
+
+def exclude_chapters(
+    chapters: dict[str, list[Path]],
+    excluded: list[str],
+) -> dict[str, list[Path]]:
+    """Remove configured chapter groups from the consolidation input."""
+    if not excluded:
+        return chapters
+
+    excluded_set = set(excluded)
+    return {
+        chapter_key: files
+        for chapter_key, files in chapters.items()
+        if chapter_key not in excluded_set
+    }
 
 
 # ============================================================================
@@ -104,6 +150,7 @@ def _build_cover_and_toc(
     chapters: dict[str, list[Path]],
     title: str,
     page_map: dict[str, int],
+    cover: dict[str, str],
 ) -> bytes:
     """
     Generate a short PDF (in memory) containing:
@@ -130,10 +177,10 @@ def _build_cover_and_toc(
     c.drawCentredString(w / 2, h - 8 * cm, title)
 
     c.setFont("Helvetica", 13)
-    c.drawCentredString(w / 2, h - 10 * cm, "Gesamtreferenz aller Notebooks")
+    c.drawCentredString(w / 2, h - 10 * cm, cover["subtitle"])
 
     c.setFont("Helvetica-Oblique", 10)
-    c.drawCentredString(w / 2, 3 * cm, "Automatisch generiert aus Jupyter Notebooks")
+    c.drawCentredString(w / 2, 3 * cm, cover["footer_note"])
 
     c.showPage()
 
@@ -195,6 +242,8 @@ def _build_cover_and_toc(
 def build_consolidated_pdf(
     chapters: dict[str, list[Path]],
     title: str,
+    metadata: dict[str, str],
+    cover: dict[str, str],
     include_cover: bool = True,
 ) -> PdfWriter:
     """
@@ -233,7 +282,7 @@ def build_consolidated_pdf(
             preliminary_map[pdf_file.stem] = offset
             offset += count
         from io import BytesIO
-        preliminary_cover = _build_cover_and_toc(chapters, title, preliminary_map)
+        preliminary_cover = _build_cover_and_toc(chapters, title, preliminary_map, cover)
         cover_reader = PdfReader(BytesIO(preliminary_cover))
         cover_pages = len(cover_reader.pages)
 
@@ -246,7 +295,7 @@ def build_consolidated_pdf(
 
     # ── Generate final cover/TOC ───────────────────────────────────────────
     if include_cover:
-        cover_bytes = _build_cover_and_toc(chapters, title, page_map)
+        cover_bytes = _build_cover_and_toc(chapters, title, page_map, cover)
         cover_reader = PdfReader(BytesIO(cover_bytes))
         # Verify page count hasn't changed (it shouldn't, same content)
         assert len(cover_reader.pages) == cover_pages, "Cover page count mismatch"
@@ -290,8 +339,8 @@ def build_consolidated_pdf(
     writer.add_metadata(
         {
             "/Title": title,
-            "/Subject": "Mathematik Gesamtreferenz - Jupyter Notebooks",
-            "/Creator": "consolidate_pdfs.py (pypdf + reportlab)",
+            "/Subject": metadata["subject"],
+            "/Creator": metadata["creator"],
         }
     )
 
@@ -304,41 +353,61 @@ def build_consolidated_pdf(
 
 
 def main() -> int:
+    repo_root = Path(__file__).resolve().parent.parent
+
+    try:
+        profile = bootstrap_profile_settings(
+            repo_root,
+            "consolidate_pdfs",
+            DEFAULTS,
+        )
+    except PROFILE_LOAD_EXCEPTIONS as exc:
+        print(f"ERROR: {exc}")
+        return 1
+
+    settings = profile.settings
+    profile_path = profile.profile_path
+
     parser = argparse.ArgumentParser(
         description="Consolidate exported notebook PDFs into a single reference file.",
+        parents=[profile.config_parser],
     )
     parser.add_argument(
         "--pdf-dir",
-        default=DEFAULTS["pdf_dir"],
-        help=f"Directory with exported PDFs (default: {DEFAULTS['pdf_dir']})",
+        default=settings["pdf_dir"],
+        help=f"Directory with exported PDFs (default: {settings['pdf_dir']})",
     )
     parser.add_argument(
         "--output-dir",
-        default=DEFAULTS["output_dir"],
-        help=f"Where to write the consolidated file (default: {DEFAULTS['output_dir']})",
+        default=settings["output_dir"],
+        help=f"Where to write the consolidated file (default: {settings['output_dir']})",
     )
     parser.add_argument(
         "--output-name",
-        default=DEFAULTS["output_name"],
-        help=f"Output filename (default: {DEFAULTS['output_name']})",
+        default=settings["output_name"],
+        help=f"Output filename (default: {settings['output_name']})",
     )
     parser.add_argument(
         "--title",
-        default=DEFAULTS["title"],
-        help=f"Document title (default: {DEFAULTS['title']})",
+        default=settings["title"],
+        help=f"Document title (default: {settings['title']})",
     )
     parser.add_argument(
-        "--no-cover",
-        action="store_true",
-        default=False,
-        help="Skip cover page and table of contents generation",
+        "--cover",
+        action=argparse.BooleanOptionalAction,
+        default=settings["include_cover"],
+        help="Include cover page and table of contents generation",
+    )
+    parser.add_argument(
+        "--exclude-chapters",
+        nargs="+",
+        default=settings["filters"]["exclude_chapters"],
+        help="Chapter folder keys to omit from the consolidated PDF",
     )
 
     args = parser.parse_args()
-
-    repo_root = Path(__file__).resolve().parent.parent
-    pdf_dir = repo_root / args.pdf_dir
-    output_dir = repo_root / args.output_dir
+    pdf_dir = resolve_repo_path(repo_root, args.pdf_dir)
+    output_dir = resolve_repo_path(repo_root, args.output_dir)
     output_file = output_dir / args.output_name
 
     # ── Pre-flight ─────────────────────────────────────────────────────────
@@ -347,25 +416,38 @@ def main() -> int:
         print("Run export_notebooks.py --formats pdf first to generate PDF files.")
         return 1
 
-    chapters = discover_pdf_files(pdf_dir)
+    chapters = exclude_chapters(
+        exclude_pdf_file(discover_pdf_files(pdf_dir), output_file),
+        args.exclude_chapters,
+    )
     total = sum(len(files) for files in chapters.values())
 
     if total == 0:
         print(f"No PDF files found under {pdf_dir}")
         return 1
 
-    include_cover = not args.no_cover
+    include_cover = args.cover
 
     print(f"Consolidate PDFs")
+    if profile_path is not None:
+        print(f"  Profile:  {format_profile_path(repo_root, profile_path)}")
     print(f"  Source:   {pdf_dir}")
     print(f"  Output:   {output_file}")
+    if args.exclude_chapters:
+        print(f"  Excluded chapters: {', '.join(args.exclude_chapters)}")
     print(f"  Chapters: {len(chapters)}")
     print(f"  Notebooks: {total}")
     print(f"  Cover/TOC: {'yes' if include_cover else 'no'}")
     print()
 
     # ── Build ──────────────────────────────────────────────────────────────
-    writer = build_consolidated_pdf(chapters, args.title, include_cover)
+    writer = build_consolidated_pdf(
+        chapters,
+        args.title,
+        settings["metadata"],
+        settings["cover"],
+        include_cover,
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     with open(output_file, "wb") as f:

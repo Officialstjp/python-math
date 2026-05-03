@@ -18,8 +18,14 @@ Usage:
     # Export both HTML and PDF
     python scripts/export_notebooks.py --formats html pdf
 
+    # Omit glossary sections in both HTML and PDF
+    python scripts/export_notebooks.py --formats html pdf --exclude-glossary-formats html pdf
+
     # Custom source and output directories
     python scripts/export_notebooks.py --source-dir Foundations --output-dir exports
+
+    # Load persistent defaults from a TOML profile
+    python scripts/export_notebooks.py --config scripts/export_profile.toml
 
     # Show code cells in output
     python scripts/export_notebooks.py --with-input
@@ -52,18 +58,19 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from export_profile import (
+    NOTEBOOK_EXPORT_DEFAULTS,
+    PROFILE_LOAD_EXCEPTIONS,
+    bootstrap_profile_settings,
+    format_profile_path,
+    resolve_repo_path,
+)
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-DEFAULTS = {
-    "source_dir": "Foundations",
-    "output_dir": "exports",
-    "formats": ["html"],
-    "no_input": True,
-    "notebook_glob": "**/*.ipynb",
-    "workers": 4,
-}
+DEFAULTS = NOTEBOOK_EXPORT_DEFAULTS
 
 VALID_FORMATS = ("html", "markdown", "pdf")
 
@@ -74,87 +81,180 @@ EXERCISE_HEADING_PATTERNS: list[str] = [
     r"^#+\s*Lösungen?\b",      # "### Lösungen"
 ]
 
+# Heading patterns that mark glossary sections to exclude from compact PDFs.
+GLOSSARY_HEADING_PATTERNS: list[str] = [
+    r"^#+\s*Glossar\b",
+    r"^#+\s*Glossary\b",
+]
+
 # Mime types considered visual (kept when stripping text output)
 VISUAL_MIME_TYPES = {
     "image/png", "image/jpeg", "image/svg+xml", "image/gif",
     "text/html",  # Rendered outputs like DataFrames, widgets
 }
 
-# CSS injected into exported HTML to fix table rendering (MathJax wrapping)
-TABLE_FIX_CSS = """
-<style>
-/* Prevent MathJax from wrapping inside table cells */
-table { width: 100%; border-collapse: collapse; table-layout: auto; }
-th, td { padding: 0.5rem 0.75rem; vertical-align: top; border: 1px solid #ddd; }
-th { background: #f5f5f5; font-weight: 600; }
-td .MathJax, th .MathJax { white-space: nowrap; display: inline !important; }
-td mjx-container, th mjx-container { white-space: nowrap !important; display: inline !important; }
-/* Hide empty code-cell input areas (produced by per-cell hide-input tag) */
-div.input:has(.highlight pre > span:only-child:empty) { display: none; }
-div.jp-Cell-inputWrapper:has(pre > span:only-child:empty) { display: none; }
-</style>
-"""
+MATPLOTLIB_ANIMATION_MARKERS = (
+    "/* Define the Animation class */",
+    "function Animation(frames",
+    "Animation.prototype",
+)
 
-# Print-optimised CSS injected into HTML before Playwright renders to PDF.
-PDF_PRINT_CSS = """
+ANIMATION_SOURCE_MARKERS = (
+    ".to_jshtml(",
+    ".to_html5_video(",
+)
+
+ANIMATION_EXPORT_PLACEHOLDER = (
+    "<div style=\"padding:0.75rem 1rem; border:1px solid #d8dee9; "
+    "background:#f8fafc; color:#334155; border-radius:6px; font-style:italic;\">"
+    "(Interaktive Matplotlib-Animation im statischen Export ausgelassen) "
+    "</div>"
+)
+
+HTML_EXPORT_CSS_MARKER = "/* HTML export layout overrides */"
+
+
+def _css_rule(name: str, value: str | None, indent: str = "    ") -> str:
+    """Build a single CSS property rule when a value is configured."""
+    if value is None:
+        return ""
+    return f"{indent}{name}: {value};"
+
+
+def _join_rules(*rules: str) -> str:
+    """Join non-empty CSS rules into a block body."""
+    return "\n".join(rule for rule in rules if rule)
+
+
+def _build_html_export_css(style: dict[str, str | None]) -> str:
+    """Build CSS injected into exported HTML files."""
+    sections = [
+        HTML_EXPORT_CSS_MARKER,
+        "/* Prevent MathJax from wrapping inside table cells */",
+        ".jp-RenderedHTMLCommon table { width: 100%; border-collapse: collapse; table-layout: auto; }",
+        ".jp-RenderedHTMLCommon th, .jp-RenderedHTMLCommon td { padding: 0.5rem 0.75rem; vertical-align: top; border: 1px solid #ddd; }",
+        ".jp-RenderedHTMLCommon th { background: #f5f5f5; font-weight: 600; }",
+        ".jp-RenderedHTMLCommon td .MathJax, .jp-RenderedHTMLCommon th .MathJax { white-space: nowrap; display: inline !important; }",
+        ".jp-RenderedHTMLCommon td mjx-container, .jp-RenderedHTMLCommon th mjx-container { white-space: nowrap !important; display: inline !important; }",
+        "/* Hide empty code-cell input areas (produced by per-cell hide-input tag) */",
+        "div.input:has(.highlight pre > span:only-child:empty) { display: none; }",
+        "div.jp-Cell-inputWrapper:has(pre > span:only-child:empty) { display: none; }",
+    ]
+
+    body_rules = _join_rules(
+        _css_rule("padding", style.get("body_padding")),
+        _css_rule("font-size", style.get("content_font_size")),
+        _css_rule("line-height", style.get("content_line_height")),
+    )
+    if body_rules:
+        sections.append(f"body.jp-Notebook {{\n{body_rules}\n}}")
+
+    image_rules = _join_rules(
+        _css_rule("max-width", style.get("image_max_width")),
+        _css_rule("max-height", style.get("image_max_height")),
+        _css_rule("margin", style.get("image_margin")),
+    )
+    if image_rules:
+        sections.append(".jp-OutputArea-output { text-align: center; }")
+        sections.append(
+            "\n".join(
+                [
+                    ".jp-OutputArea-output img,",
+                    ".jp-OutputArea-output svg {",
+                    "    display: block;",
+                    "    width: auto;",
+                    "    height: auto;",
+                    "    object-fit: contain;",
+                    image_rules,
+                    "}",
+                ]
+            )
+        )
+
+    return "<style>\n" + "\n".join(sections) + "\n</style>"
+
+
+def _build_pdf_print_css(style: dict[str, str]) -> str:
+    """Build the print CSS injected before Playwright renders a PDF."""
+    return f"""
 <style type="text/css">
 /* ── 1. Compact fonts ──────────────────────────────────────────── */
-:root {
-  --jp-content-font-size1: 9pt;
-  --jp-content-font-size0: 8pt;
-  --jp-code-font-size: 7.5pt;
-  --jp-content-line-height: 1.4;
-  --jp-content-heading-line-height: 1.2;
-}
-body.jp-Notebook {
-  font-size: 9pt;
-  line-height: 1.4;
-  padding: 0 0.15in;
-}
-.jp-RenderedHTMLCommon h1 { font-size: 1.5em; margin-top: 0.5em; margin-bottom: 0.25em; }
-.jp-RenderedHTMLCommon h2 { font-size: 1.3em; margin-top: 0.45em; margin-bottom: 0.2em; }
-.jp-RenderedHTMLCommon h3 { font-size: 1.12em; margin-top: 0.35em; margin-bottom: 0.15em; }
-.jp-RenderedHTMLCommon h4 { font-size: 1.02em; margin-top: 0.3em; margin-bottom: 0.1em; }
-.jp-RenderedHTMLCommon p { margin-top: 0.25em; margin-bottom: 0.25em; }
+:root {{
+    --jp-content-font-size1: {style['content_font_size']};
+    --jp-content-font-size0: {style['content_font_size_small']};
+    --jp-code-font-size: {style['code_font_size']};
+    --jp-content-line-height: {style['content_line_height']};
+    --jp-content-heading-line-height: {style['heading_line_height']};
+}}
+body.jp-Notebook {{
+    font-size: {style['content_font_size']};
+    line-height: {style['content_line_height']};
+    padding: {style['body_padding']};
+}}
+.jp-RenderedHTMLCommon h1 {{ font-size: 1.4em; margin-top: 0.45em; margin-bottom: 0.22em; }}
+.jp-RenderedHTMLCommon h2 {{ font-size: 1.22em; margin-top: 0.38em; margin-bottom: 0.18em; }}
+.jp-RenderedHTMLCommon h3 {{ font-size: 1.08em; margin-top: 0.3em; margin-bottom: 0.12em; }}
+.jp-RenderedHTMLCommon h4 {{ font-size: 1em; margin-top: 0.25em; margin-bottom: 0.08em; }}
+.jp-RenderedHTMLCommon p {{ margin-top: 0.25em; margin-bottom: 0.25em; }}
 .jp-RenderedHTMLCommon ul,
-.jp-RenderedHTMLCommon ol { margin-top: 0.15em; margin-bottom: 0.15em; }
-.jp-RenderedHTMLCommon li { margin-top: 0.05em; margin-bottom: 0.05em; }
+.jp-RenderedHTMLCommon ol {{ margin-top: 0.15em; margin-bottom: 0.15em; }}
+.jp-RenderedHTMLCommon li {{ margin-top: 0.05em; margin-bottom: 0.05em; }}
 .jp-RenderedText pre,
-.cm-editor.cm-s-jupyter .highlight pre {
+.cm-editor.cm-s-jupyter .highlight pre {{
   font-size: var(--jp-code-font-size);
   line-height: 1.35;
-}
-.jp-Cell { padding-top: 3px; padding-bottom: 3px; }
+}}
+.jp-Cell {{ padding-top: 3px; padding-bottom: 3px; }}
 .jp-Cell-inputWrapper,
-.jp-Cell-outputWrapper { padding-top: 1px; padding-bottom: 1px; }
+.jp-Cell-outputWrapper {{ padding-top: 1px; padding-bottom: 1px; }}
 
 /* ── 2. Table formula layout ───────────────────────────────────── */
-table { table-layout: auto; width: auto; max-width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-th, td { padding: 0.2rem 0.4rem; vertical-align: top; border: 1px solid #ddd; }
-th { background: #f5f5f5; font-weight: 600; }
-/* Prevent MathJax CHTML from using stacked block layout inside table cells */
-td .MathJax_CHTML, th .MathJax_CHTML { white-space: nowrap !important; display: inline !important; }
-td .MathJax_CHTML.mjx-full-width { width: auto !important; }
-td .mjx-math, th .mjx-math { width: auto !important; }
-td .mjx-mrow, th .mjx-mrow { width: auto !important; }
-td .mjx-stack, th .mjx-stack { display: inline !important; vertical-align: middle !important; }
-td .mjx-block, th .mjx-block { display: inline !important; }
-/* Also handle MathJax 3 (mjx-container) */
-td mjx-container, th mjx-container { display: inline !important; white-space: nowrap !important; }
-/* Keep entire cell content on one line when it contains math */
-td:has(.MathJax_CHTML), td:has(mjx-container) { white-space: nowrap; }
+.jp-RenderedHTMLCommon table {{
+    table-layout: auto;
+    width: auto;
+    max-width: 100%;
+    border-collapse: collapse;
+    font-size: {style['table_font_size']} !important;
+    margin-left: 0;
+    margin-right: 0;
+}}
+.jp-RenderedHTMLCommon th,
+.jp-RenderedHTMLCommon td {{
+    padding: {style['table_cell_padding']} !important;
+    vertical-align: top;
+    border: 1px solid #ddd;
+}}
+.jp-RenderedHTMLCommon th {{ background: #f5f5f5; font-weight: 600; }}
+.jp-RenderedHTMLCommon td .MathJax_CHTML, .jp-RenderedHTMLCommon th .MathJax_CHTML {{ white-space: nowrap !important; display: inline !important; }}
+.jp-RenderedHTMLCommon td .MathJax_CHTML.mjx-full-width {{ width: auto !important; }}
+.jp-RenderedHTMLCommon td .mjx-math, .jp-RenderedHTMLCommon th .mjx-math {{ width: auto !important; }}
+.jp-RenderedHTMLCommon td .mjx-mrow, .jp-RenderedHTMLCommon th .mjx-mrow {{ width: auto !important; }}
+.jp-RenderedHTMLCommon td .mjx-stack, .jp-RenderedHTMLCommon th .mjx-stack {{ display: inline !important; vertical-align: middle !important; }}
+.jp-RenderedHTMLCommon td .mjx-block, .jp-RenderedHTMLCommon th .mjx-block {{ display: inline !important; }}
+.jp-RenderedHTMLCommon td mjx-container, .jp-RenderedHTMLCommon th mjx-container {{ display: inline !important; white-space: nowrap !important; }}
+.jp-RenderedHTMLCommon td:has(.MathJax_CHTML), .jp-RenderedHTMLCommon td:has(mjx-container) {{ white-space: nowrap; }}
 
 /* ── 3. Smart page breaks ──────────────────────────────────────── */
-@page { margin: 0.6in 0.5in; }
-table { break-inside: avoid; }
+@page {{ margin: {style['page_margin']}; }}
+table {{ break-inside: avoid; }}
 h1, h2, h3, h4,
 .jp-RenderedHTMLCommon h1, .jp-RenderedHTMLCommon h2,
-.jp-RenderedHTMLCommon h3, .jp-RenderedHTMLCommon h4 { break-after: avoid; }
-p, li { orphans: 3; widows: 3; }
-.jp-OutputArea-output img, .jp-OutputArea-output svg { break-inside: avoid; }
+.jp-RenderedHTMLCommon h3, .jp-RenderedHTMLCommon h4 {{ break-after: avoid; }}
+p, li {{ orphans: 3; widows: 3; }}
+.jp-OutputArea-output img, .jp-OutputArea-output svg {{ break-inside: avoid; }}
 
 /* ── 4. Image sizing for print ─────────────────────────────────── */
-.jp-OutputArea-output img { max-width: 100%; height: auto; }
+.jp-OutputArea-output {{ text-align: center; }}
+.jp-OutputArea-output img,
+.jp-OutputArea-output svg {{
+    display: block;
+    max-width: {style['image_max_width']};
+    max-height: {style['image_max_height']};
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin: {style['image_margin']};
+}}
 </style>
 """
 
@@ -174,6 +274,16 @@ def _is_exercise_cell(source: str) -> bool:
     for line in source.split("\n"):
         line = line.strip()
         for pattern in EXERCISE_HEADING_PATTERNS:
+            if re.match(pattern, line, re.IGNORECASE):
+                return True
+    return False
+
+
+def _is_glossary_cell(source: str) -> bool:
+    """Check if a markdown cell starts a glossary section."""
+    for line in source.split("\n"):
+        line = line.strip()
+        for pattern in GLOSSARY_HEADING_PATTERNS:
             if re.match(pattern, line, re.IGNORECASE):
                 return True
     return False
@@ -228,12 +338,86 @@ def _filter_text_outputs(cell: dict) -> dict:
     return cell
 
 
+def _mime_bundle_to_text(value: object) -> str:
+    """Normalize a notebook mime bundle value to plain text."""
+    if isinstance(value, list):
+        return "".join(str(part) for part in value)
+    return str(value)
+
+
+def _is_matplotlib_animation_output(output: dict) -> bool:
+    """Detect HTML produced by matplotlib animation.to_jshtml()."""
+    if output.get("output_type", "") not in ("display_data", "execute_result"):
+        return False
+
+    data = output.get("data", {})
+    html = data.get("text/html")
+    if html is None:
+        return False
+
+    html_text = _mime_bundle_to_text(html)
+    return any(marker in html_text for marker in MATPLOTLIB_ANIMATION_MARKERS)
+
+
+def _make_animation_placeholder_output() -> dict:
+    """Return a lightweight note for static exports in place of JS animation."""
+    return {
+        "output_type": "display_data",
+        "data": {
+            "text/html": [ANIMATION_EXPORT_PLACEHOLDER],
+            "text/plain": [
+                "[Interaktive Matplotlib-Animation im statischen Export ausgelassen.]",
+            ],
+        },
+        "metadata": {},
+    }
+
+
+def _cell_source_to_text(cell: dict) -> str:
+    """Normalize a notebook cell source field to plain text."""
+    source = cell.get("source", "")
+    if isinstance(source, list):
+        return "".join(str(part) for part in source)
+    return str(source)
+
+
+def _cell_requests_animation_export(cell: dict) -> bool:
+    """Detect code cells that render an animation into notebook HTML output."""
+    if cell.get("cell_type") != "code":
+        return False
+    source_text = _cell_source_to_text(cell)
+    return any(marker in source_text for marker in ANIMATION_SOURCE_MARKERS)
+
+
+def _replace_animation_outputs(cell: dict) -> dict:
+    """Replace heavy matplotlib JS animation outputs with a small export note."""
+    cell = copy.deepcopy(cell)
+    filtered_outputs = []
+    replaced_animation = False
+
+    for output in cell.get("outputs", []):
+        if _is_matplotlib_animation_output(output):
+            if not replaced_animation:
+                filtered_outputs.append(_make_animation_placeholder_output())
+                replaced_animation = True
+            continue
+        filtered_outputs.append(output)
+
+    if not replaced_animation and _cell_requests_animation_export(cell):
+        filtered_outputs.append(_make_animation_placeholder_output())
+
+    cell["outputs"] = filtered_outputs
+    return cell
+
+
 def preprocess_notebook(
     notebook_path: Path,
     *,
     no_input: bool = True,
     no_text_output: bool = False,
     no_exercises: bool = False,
+    no_glossary: bool = False,
+    strip_animation_outputs: bool = True,
 ) -> Path | None:
     """
     Apply content filters to a notebook and write the result to a temp file.
@@ -254,14 +438,24 @@ def preprocess_notebook(
     has_input_tags = "show-input" in raw or "hide-input" in raw
 
     # Skip preprocessing when no filters or per-cell tags need to be applied
-    if not no_text_output and not no_exercises and not has_input_tags:
+    if (
+        not no_text_output
+        and not no_exercises
+        and not no_glossary
+        and not has_input_tags
+        and not strip_animation_outputs
+    ):
         return None
 
     nb = json.loads(raw)
     filtered_cells = []
+    skip_remaining_for_glossary = False
 
     for cell in nb.get("cells", []):
         cell_type = cell.get("cell_type", "")
+
+        if skip_remaining_for_glossary:
+            continue
 
         # Optionally skip exercise / solution markdown cells
         if no_exercises and cell_type == "markdown":
@@ -269,7 +463,17 @@ def preprocess_notebook(
             if _is_exercise_cell(source):
                 continue
 
+        # Optionally skip glossary sections in compact PDF exports.
+        if no_glossary and cell_type == "markdown":
+            source = "".join(cell.get("source", []))
+            if _is_glossary_cell(source):
+                skip_remaining_for_glossary = True
+                continue
+
         # Optionally strip text-only outputs from code cells
+        if strip_animation_outputs and cell_type == "code":
+            cell = _replace_animation_outputs(cell)
+
         if no_text_output and cell_type == "code":
             cell = _filter_text_outputs(cell)
 
@@ -338,22 +542,22 @@ def _fix_markdown_image_paths(md_path: Path) -> None:
     md_path.write_text(text, encoding="utf-8")
 
 
-def _inject_table_css(html_path: Path) -> None:
-    """Inject table-fix CSS into an exported HTML file (before </head>)."""
+def _inject_html_export_css(html_path: Path, html_style: dict[str, str | None]) -> None:
+    """Inject HTML export CSS into an exported notebook file."""
     if not html_path.exists():
         return
     html = html_path.read_text(encoding="utf-8")
-    if "/* Prevent MathJax from wrapping inside table cells */" in html:
+    if HTML_EXPORT_CSS_MARKER in html:
         return  # already injected
-    html = html.replace("</head>", TABLE_FIX_CSS + "\n</head>", 1)
+    html = html.replace("</head>", _build_html_export_css(html_style) + "\n</head>", 1)
     html_path.write_text(html, encoding="utf-8")
 
 
-def _html_to_pdf(html_path: Path, pdf_path: Path) -> None:
+def _html_to_pdf(html_path: Path, pdf_path: Path, pdf_style: dict[str, str]) -> None:
     """Convert an HTML file to PDF via Playwright Chromium with print CSS injected."""
     html = html_path.read_text(encoding="utf-8")
     # Inject print-optimised CSS before </head>
-    html = html.replace("</head>", PDF_PRINT_CSS + "\n</head>", 1)
+    html = html.replace("</head>", _build_pdf_print_css(pdf_style) + "\n</head>", 1)
 
     tmp = tempfile.NamedTemporaryFile(
         suffix=".html", delete=False, mode="w", encoding="utf-8",
@@ -371,7 +575,10 @@ def _html_to_pdf(html_path: Path, pdf_path: Path) -> None:
                 page = await browser.new_page()
                 await page.emulate_media(media="print")
                 await page.goto(Path(tmp.name).as_uri(), wait_until="networkidle")
-                pdf_bytes = await page.pdf(print_background=True)
+                pdf_bytes = await page.pdf(
+                    format=pdf_style["page_format"],
+                    print_background=True,
+                )
                 await browser.close()
             return pdf_bytes
 
@@ -409,9 +616,13 @@ def export_notebook(
     output_dir: Path,
     fmt: str,
     no_input: bool,
+    html_style: dict[str, str | None],
+    pdf_style: dict[str, str],
     *,
     no_text_output: bool = False,
     no_exercises: bool = False,
+    no_glossary: bool = False,
+    keep_glossary_notebooks: bool = True,
 ) -> bool:
     """
     Export a single notebook to the given format.
@@ -425,11 +636,23 @@ def export_notebook(
     relative = notebook.relative_to(source_dir)
     dest_dir = output_dir / fmt / relative.parent
     dest_dir.mkdir(parents=True, exist_ok=True)
+    is_glossary_notebook = "99_Glossare" in notebook.parts
+    filter_glossary_sections = no_glossary and (
+        not is_glossary_notebook or not keep_glossary_notebooks
+    )
+
+    if no_glossary and is_glossary_notebook and not keep_glossary_notebooks:
+        (dest_dir / f"{notebook.stem}.{fmt}").unlink(missing_ok=True)
+        print(f"  SKIP  {relative} -> {fmt} (glossary notebook excluded)")
+        return True
 
     # Preprocess notebook if any content filters or per-cell tags are active
     processed = preprocess_notebook(
         notebook, no_input=no_input,
-        no_text_output=no_text_output, no_exercises=no_exercises,
+        no_text_output=no_text_output,
+        no_exercises=no_exercises,
+        no_glossary=filter_glossary_sections,
+        strip_animation_outputs=True,
     )
     notebook_to_export = processed if processed else notebook
 
@@ -460,12 +683,12 @@ def export_notebook(
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         if result.returncode != 0:
-            print(f"  FAIL  {relative} → {fmt}")
+            print(f"  FAIL  {relative} -> {fmt}")
             print(f"        {result.stderr.strip()}")
             return False
-        # Post-process HTML to inject table fix CSS
+        # Post-process HTML with layout fixes and optional sizing overrides.
         if fmt == "html":
-            _inject_table_css(dest_dir / f"{notebook.stem}.html")
+            _inject_html_export_css(dest_dir / f"{notebook.stem}.html", html_style)
 
         # Post-process markdown to fix absolute image paths
         if fmt == "markdown":
@@ -475,16 +698,16 @@ def export_notebook(
         if fmt == "pdf":
             html_file = dest_dir / f"{notebook.stem}.html"
             pdf_file = dest_dir / f"{notebook.stem}.pdf"
-            _html_to_pdf(html_file, pdf_file)
+            _html_to_pdf(html_file, pdf_file, pdf_style)
             html_file.unlink(missing_ok=True)
 
-        print(f"  OK    {relative} → {fmt}")
+        print(f"  OK    {relative} -> {fmt}")
         return True
     except subprocess.TimeoutExpired:
-        print(f"  TIMEOUT  {relative} → {fmt}")
+        print(f"  TIMEOUT  {relative} -> {fmt}")
         return False
     except Exception as e:
-        print(f"  ERROR {relative} → {fmt}: {e}")
+        print(f"  ERROR {relative} -> {fmt}: {e}")
         return False
     finally:
         # Clean up temp file from preprocessing
@@ -498,30 +721,46 @@ def export_notebook(
 
 
 def main() -> int:
+    repo_root = Path(__file__).resolve().parent.parent
+
+    try:
+        profile = bootstrap_profile_settings(
+            repo_root,
+            "export_notebooks",
+            DEFAULTS,
+        )
+    except PROFILE_LOAD_EXCEPTIONS as exc:
+        print(f"ERROR: {exc}")
+        return 1
+
+    settings = profile.settings
+    profile_path = profile.profile_path
+
     parser = argparse.ArgumentParser(
         description="Export Jupyter notebooks to HTML/PDF with mirrored folder structure.",
+        parents=[profile.config_parser],
     )
     parser.add_argument(
         "--source-dir",
-        default=DEFAULTS["source_dir"],
-        help=f"Root directory containing notebooks (default: {DEFAULTS['source_dir']})",
+        default=settings["source_dir"],
+        help=f"Root directory containing notebooks (default: {settings['source_dir']})",
     )
     parser.add_argument(
         "--output-dir",
-        default=DEFAULTS["output_dir"],
-        help=f"Root output directory for exports (default: {DEFAULTS['output_dir']})",
+        default=settings["output_dir"],
+        help=f"Root output directory for exports (default: {settings['output_dir']})",
     )
     parser.add_argument(
         "--formats",
         nargs="+",
         choices=VALID_FORMATS,
-        default=DEFAULTS["formats"],
-        help=f"Export formats (default: {' '.join(DEFAULTS['formats'])})",
+        default=settings["formats"],
+        help=f"Export formats (default: {' '.join(settings['formats'])})",
     )
     parser.add_argument(
         "--no-input",
         action="store_true",
-        default=DEFAULTS["no_input"],
+        default=settings["no_input"],
         help="Hide code cells in output (default: True)",
     )
     parser.add_argument(
@@ -533,14 +772,42 @@ def main() -> int:
     parser.add_argument(
         "--no-text-output",
         action="store_true",
-        default=False,
+        default=settings["filters"]["no_text_output"],
         help="Strip text/print output from code cells, keep only figures and rich HTML",
     )
     parser.add_argument(
         "--no-exercises",
         action="store_true",
-        default=False,
+        default=settings["filters"]["no_exercises"],
         help="Exclude exercise and solution sections (Verständnis-Check, Lösungen)",
+    )
+    parser.add_argument(
+        "--exclude-glossary-formats",
+        nargs="+",
+        choices=VALID_FORMATS,
+        default=settings["filters"]["exclude_glossary_formats"],
+        help=(
+            "Formats where glossary sections should be omitted "
+            f"(default: {' '.join(settings['filters']['exclude_glossary_formats']) or 'none'})"
+        ),
+    )
+    parser.add_argument(
+        "--html-no-glossary",
+        action="store_true",
+        default=False,
+        help="Shortcut: omit glossary sections in HTML exports too",
+    )
+    parser.add_argument(
+        "--pdf-with-glossary",
+        action="store_true",
+        default=False,
+        help="Compatibility shortcut: keep glossary sections in PDF exports",
+    )
+    parser.add_argument(
+        "--skip-glossary-notebooks",
+        action="store_true",
+        default=not settings["filters"]["keep_glossary_notebooks"],
+        help="When glossary sections are omitted, skip dedicated 99_Glossare notebooks too",
     )
     parser.add_argument(
         "--ci",
@@ -551,18 +818,36 @@ def main() -> int:
     parser.add_argument(
         "--workers",
         type=int,
-        default=DEFAULTS["workers"],
-        help=f"Number of parallel export workers (default: {DEFAULTS['workers']}, use 1 to disable)",
+        default=settings["workers"],
+        help=f"Number of parallel export workers (default: {settings['workers']}, use 1 to disable)",
     )
 
     args = parser.parse_args()
-
-    # Resolve paths relative to repo root (parent of scripts/)
-    repo_root = Path(__file__).resolve().parent.parent
-    source_dir = repo_root / args.source_dir
-    output_dir = repo_root / args.output_dir
+    source_dir = resolve_repo_path(repo_root, args.source_dir)
+    output_dir = resolve_repo_path(repo_root, args.output_dir)
 
     no_input = args.no_input and not args.with_input
+    configured_formats = list(dict.fromkeys(args.formats))
+    exclude_glossary_formats = set(args.exclude_glossary_formats)
+    if args.html_no_glossary:
+        exclude_glossary_formats.add("html")
+    if args.pdf_with_glossary:
+        exclude_glossary_formats.discard("pdf")
+    keep_glossary_notebooks = not args.skip_glossary_notebooks
+    html_style = settings["styles"]["html"]
+    pdf_style = settings["styles"]["pdf"]
+
+    invalid_formats = sorted(set(configured_formats) - set(VALID_FORMATS))
+    invalid_glossary_formats = sorted(exclude_glossary_formats - set(VALID_FORMATS))
+    if invalid_formats:
+        print(f"ERROR: Invalid export format(s) in configuration: {', '.join(invalid_formats)}")
+        return 1
+    if invalid_glossary_formats:
+        print(
+            "ERROR: Invalid glossary exclusion format(s) in configuration: "
+            f"{', '.join(invalid_glossary_formats)}"
+        )
+        return 1
 
     # ── Pre-flight ─────────────────────────────────────────────────────────
     if not source_dir.is_dir():
@@ -575,12 +860,22 @@ def main() -> int:
         return 0
 
     print(f"Export Notebooks")
+    if profile_path is not None:
+        print(f"  Profile: {format_profile_path(repo_root, profile_path)}")
     print(f"  Source:  {source_dir}")
     print(f"  Output:  {output_dir}")
-    print(f"  Formats: {', '.join(args.formats)}")
+    print(f"  Formats: {', '.join(configured_formats)}")
     print(f"  Code:    {'hidden' if no_input else 'visible'}")
     print(f"  Text output: {'stripped' if args.no_text_output else 'included'}")
     print(f"  Exercises:   {'excluded' if args.no_exercises else 'included'}")
+    print(
+        "  Glossary sections omitted for: "
+        f"{', '.join(sorted(exclude_glossary_formats)) if exclude_glossary_formats else 'none'}"
+    )
+    print(
+        "  Dedicated glossary notebooks: "
+        f"{'included' if keep_glossary_notebooks else 'skipped when glossary is omitted'}"
+    )
     print(f"  Workers: {args.workers}")
     print(f"  Found:   {len(notebooks)} notebook(s)")
     print()
@@ -589,10 +884,11 @@ def main() -> int:
     total = 0
     failed = 0
 
-    for fmt in args.formats:
+    for fmt in configured_formats:
         print(f"── {fmt.upper()} ──")
         fmt_notebooks = list(notebooks)
         fmt_total = len(fmt_notebooks)
+        no_glossary_for_format = fmt in exclude_glossary_formats
 
         if args.workers > 1 and fmt_total > 1:
             # Parallel export
@@ -600,9 +896,11 @@ def main() -> int:
                 futures = {
                     pool.submit(
                         export_notebook,
-                        nb, source_dir, output_dir, fmt, no_input,
+                        nb, source_dir, output_dir, fmt, no_input, html_style, pdf_style,
                         no_text_output=args.no_text_output,
                         no_exercises=args.no_exercises,
+                        no_glossary=no_glossary_for_format,
+                        keep_glossary_notebooks=keep_glossary_notebooks,
                     ): nb
                     for nb in fmt_notebooks
                 }
@@ -615,9 +913,11 @@ def main() -> int:
             for nb in fmt_notebooks:
                 total += 1
                 success = export_notebook(
-                    nb, source_dir, output_dir, fmt, no_input,
+                    nb, source_dir, output_dir, fmt, no_input, html_style, pdf_style,
                     no_text_output=args.no_text_output,
                     no_exercises=args.no_exercises,
+                    no_glossary=no_glossary_for_format,
+                    keep_glossary_notebooks=keep_glossary_notebooks,
                 )
                 if not success:
                     failed += 1

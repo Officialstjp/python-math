@@ -97,29 +97,47 @@ exports/
 
 ---
 
-## consolidate_exports.py
+## lint_figsizes.py
+
+Scans notebook code cells for Matplotlib `figsize` values and reports figures
+that are likely to export poorly under the current PDF image box. It resolves
+common literal patterns such as `figsize=(6, 4)`, `figsize=config["figsize"]`,
+and `fig.set_size_inches(...)`.
+
+### Usage
+
+```powershell
+python scripts/lint_figsizes.py --config scripts/export_profile.toml.example
+python scripts/lint_figsizes.py --source-dir Foundations/01_Algebra --all
+```
+
+---
+
+## consolidate_htmls.py
 
 Merges all individual HTML exports into a single self-contained `reference.html` with a sidebar table of contents, section dividers, and embedded images.
 
 ### Usage
 
 ```powershell
-python scripts/consolidate_exports.py [OPTIONS]
+python scripts/consolidate_htmls.py [OPTIONS]
 ```
 
 ### Parameters
 
 | Flag                 | Default                       | Description                                     |
 | -------------------- | ----------------------------- | ----------------------------------------------- |
-| `--html-dir DIR`     | `exports_clean/html`          | Directory containing exported HTML files        |
-| `--output-dir DIR`   | `exports_clean`               | Where to write the consolidated file            |
+| `--config FILE`      | `scripts/export_profile.toml` | Optional profile with shared defaults           |
+| `--html-dir DIR`     | `exports/html`                | Directory containing exported HTML files        |
+| `--output-dir DIR`   | `exports`                     | Where to write the consolidated file            |
 | `--output-name FILE` | `reference.html`              | Output filename                                 |
 | `--title TEXT`       | `Mathematik - Gesamtreferenz` | Document title (shown in sidebar & browser tab) |
+| `--exclude-chapters` | `[]`                          | Chapter folder keys to omit from the merge      |
 
 ### Example
 
 ```powershell
-python scripts/consolidate_exports.py --title "Mathe Zusammenfassung"
+python scripts/consolidate_htmls.py --title "Mathe Zusammenfassung"
 ```
 
 ---
@@ -138,11 +156,13 @@ python scripts/consolidate_pdfs.py [OPTIONS]
 
 | Flag                 | Default                       | Description                                      |
 | -------------------- | ----------------------------- | ------------------------------------------------ |
+| `--config FILE`      | `scripts/export_profile.toml` | Optional profile with shared defaults            |
 | `--pdf-dir DIR`      | `exports_clean/pdf`           | Directory containing exported PDF files          |
 | `--output-dir DIR`   | `exports_clean`               | Where to write the consolidated file             |
 | `--output-name FILE` | `reference.pdf`               | Output filename                                  |
 | `--title TEXT`       | `Mathematik - Gesamtreferenz` | Document title (cover page, metadata, bookmarks) |
 | `--no-cover`         | `False`                       | Skip cover page and table of contents            |
+| `--exclude-chapters` | `[]`                          | Chapter folder keys to omit from the merge       |
 
 ### Example
 
@@ -159,18 +179,28 @@ python scripts/consolidate_pdfs.py --title "Mathe Zusammenfassung" --no-cover
 python scripts/export_notebooks.py --formats html pdf --no-text-output --no-exercises
 
 # 2. Build consolidated HTML reference
-python scripts/consolidate_exports.py
+python scripts/consolidate_htmls.py
 
 # 3. Build consolidated PDF reference
 python scripts/consolidate_pdfs.py
 ```
 
+**Batch export with presets:**
+```powershell
+pwsh -File scripts/reexport_all.ps1 -Config scripts/export_profile.toml -NoTextOutput
+```
+
+The preset layer stays in `reexport_all.ps1` because it is orchestration data
+(which bundles to build, where they go, what the final reference files are
+called). The TOML profile stays focused on reusable rendering and layout
+defaults.
+
 **Copy: Foundations HTML, Markdown, PDF + Consolidate:**
 ```bash
-python .\scripts\export_notebooks.py --formats html markdown pdf --no-exercises --source-dir .\Foundations\ --no-text-output --output-dir .\exports\Foundations\ --workers 12; python .\scripts\consolidate_pdfs.py --pdf-dir .\exports\foundations\pdf --output-dir .\exports\foundations\pdf --title "Mathematik: SDRP Gesamtreferenz" --output-name "SDRP_Referenz.pdf"; python .\scripts\consolidate_exports.py --html-dir .\exports\foundations\html\ --output-dir .\exports\foundations\html --output-name "SDRP_Referenz.html" --title "Mathematik: SDRP Gesamtreferenz"
+pwsh -File scripts/reexport_all.ps1 -Target Foundations -NoTextOutput
 ```
 
 **Copy: ML HTML, Markdown, PDF + Consolidate:**
 ```bash
-python .\scripts\export_notebooks.py --formats html markdown pdf --no-exercises --source-dir .\ml --output-dir .\exports\ml\ --workers 4; python .\scripts\consolidate_pdfs.py --pdf-dir .\exports\ml\pdf --output-dir .\exports\ml\pdf --title "Machine-Learning Referenz" --output-name "ML_reference.pdf"; python .\scripts\consolidate_exports.py --html-dir .\exports\ml\html\ --output-dir .\exports\ml\html --output-name "ML_reference.html" --title "Machine-Learning Referenz"
+pwsh -File scripts/reexport_all.ps1 -Target ml
 ```

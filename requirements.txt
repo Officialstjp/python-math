@@ -1,0 +1,15 @@
+# ── Notebook runtime ──────────────────────────────────────────────────────────
+ipykernel>=7.2.0
+nbconvert          # not yet installed — needed by export_notebooks.py
+
+# ── Math / Science ────────────────────────────────────────────────────────────
+numpy>=2.4.4
+matplotlib>=3.10.9
+sympy              # not yet installed — used across Foundations & ml notebooks
+pandas             # not yet installed — used in Statistik notebooks
+scipy              # not yet installed — used in Statistik notebooks
+
+# ── Export scripts ────────────────────────────────────────────────────────────
+pypdf>=6.7.3       # consolidate_pdfs.py
+reportlab>=4.4.10  # consolidate_pdfs.py (cover/TOC page generation)
+playwright>=1.35.0
