@@ -30,13 +30,22 @@ from pathlib import Path
 
 from pypdf import PdfReader, PdfWriter
 
-from export_profile import (
-    CONSOLIDATE_PDF_DEFAULTS,
-    PROFILE_LOAD_EXCEPTIONS,
-    bootstrap_profile_settings,
-    format_profile_path,
-    resolve_repo_path,
-)
+try:
+    from scripts.py.export_profile import (
+        CONSOLIDATE_PDF_DEFAULTS,
+        PROFILE_LOAD_EXCEPTIONS,
+        bootstrap_profile_settings,
+        format_profile_path,
+        resolve_repo_path,
+    )
+except ModuleNotFoundError:
+    from export_profile import (
+        CONSOLIDATE_PDF_DEFAULTS,
+        PROFILE_LOAD_EXCEPTIONS,
+        bootstrap_profile_settings,
+        format_profile_path,
+        resolve_repo_path,
+    )
 
 # ============================================================================
 # CONFIGURATION
@@ -353,7 +362,7 @@ def build_consolidated_pdf(
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parents[2]
 
     try:
         profile = bootstrap_profile_settings(

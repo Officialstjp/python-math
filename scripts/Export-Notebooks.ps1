@@ -1,3 +1,12 @@
+<#
+.SYNOPSIS
+    Exports all content (notebooks, exercises, text output) for the specified target(s) and format(s).
+    Also consolidates the exported PDFs and HTMLs into single files.
+
+to be rewritten to better utilize the new export profile system and be more flexible...
+
+#>
+
 [CmdletBinding()]
 param(
     [ValidateSet("Foundations", "ml")]
@@ -15,7 +24,7 @@ param(
     [switch]$NoTextOutput,
 
     # Export all content (exercises, text output, glossary) into exports_full/.
-    # Automatically uses scripts/export_profile_full.toml when no -Config is given.
+    # Automatically uses scripts/py/export_profile_full.toml when no -Config is given.
     [switch]$FullContent
 )
 
@@ -118,7 +127,7 @@ try {
         $pdfName     = if ($FullContent) { $preset.FullPdfOutputName } else { $preset.PdfOutputName }
         $htmlName    = if ($FullContent) { $preset.FullHtmlOutputName } else { $preset.HtmlOutputName }
 
-        $exportArgs = @("scripts/export_notebooks.py") +
+        $exportArgs = @("scripts/py/export_notebooks.py") +
             $configArgs +
             @("--formats") +
             $selectedFormats +
@@ -143,7 +152,7 @@ try {
 
         if ($selectedFormats -contains "pdf") {
             Invoke-ExportStep -Label "$name consolidated PDF" -Arguments (
-                @("scripts/consolidate_pdfs.py") +
+                @("scripts/py/consolidate_pdfs.py") +
                 $configArgs +
                 @(
                     "--pdf-dir", "$outputDir/pdf",
@@ -156,7 +165,7 @@ try {
 
         if ($selectedFormats -contains "html") {
             Invoke-ExportStep -Label "$name consolidated HTML" -Arguments (
-                @("scripts/consolidate_htmls.py") +
+                @("scripts/py/consolidate_htmls.py") +
                 $configArgs +
                 @(
                     "--html-dir", "$outputDir/html",

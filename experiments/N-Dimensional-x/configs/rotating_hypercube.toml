@@ -1,0 +1,46 @@
+# Rotating 4D hypercube demo
+#
+# Goal:
+#   Rotate a 4D hypercube in a plane involving the hidden coordinate, then
+#   project it into 3D with a basis that lets the fourth coordinate visibly
+#   influence the image.
+
+[geometry]
+dimension = 4
+half_extent = 1.0
+
+[rotation]
+# Axis names by index in R^4:
+#   0 = x, 1 = y, 2 = z, 3 = w
+# Rotating in x-w makes the hidden coordinate trade places with x over time.
+axis_a = 0
+axis_b = 3
+start_angle = 0.0
+end_angle = 6.283185307179586
+
+[projection]
+target_dimension = 3
+hidden_axis = 3
+orthonormalize_basis = true
+
+# Each row is one 4D view direction that becomes a visible 3D axis.
+# The nonzero w components are the key difference from plain axis-dropping.
+basis = [
+  [1.0, 0.0, 0.0, 0.45],
+  [0.0, 1.0, 0.0, 0.35],
+  [0.0, 0.0, 1.0, 0.75],
+]
+
+[animation]
+frames = 180
+interval_ms = 40
+repeat = true
+
+[plot]
+axis_limit = 1.9
+point_size = 72
+edge_linewidth = 1.5
+edge_alpha = 0.78
+color_map = "viridis"
+figure_width = 9.0
+figure_height = 7.0

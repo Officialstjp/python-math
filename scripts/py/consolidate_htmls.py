@@ -25,13 +25,22 @@ import sys
 from html.parser import HTMLParser
 from pathlib import Path
 
-from export_profile import (
+try:
+  from scripts.py.export_profile import (
     CONSOLIDATE_HTML_DEFAULTS,
     PROFILE_LOAD_EXCEPTIONS,
     bootstrap_profile_settings,
     format_profile_path,
     resolve_repo_path,
-)
+  )
+except ModuleNotFoundError:
+  from export_profile import (
+    CONSOLIDATE_HTML_DEFAULTS,
+    PROFILE_LOAD_EXCEPTIONS,
+    bootstrap_profile_settings,
+    format_profile_path,
+    resolve_repo_path,
+  )
 
 # ============================================================================
 # CONFIGURATION
@@ -449,7 +458,7 @@ MathJax = {{
 
 
 def main() -> int:
-  repo_root = Path(__file__).resolve().parent.parent
+  repo_root = Path(__file__).resolve().parents[2]
 
   try:
     profile = bootstrap_profile_settings(

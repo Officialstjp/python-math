@@ -549,7 +549,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parents[2]
     source_dir = Path(args.source_dir)
     if not source_dir.is_absolute():
         source_dir = repo_root / source_dir

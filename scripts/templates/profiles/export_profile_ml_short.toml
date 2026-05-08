@@ -1,0 +1,86 @@
+# Optional repository-local export profile.
+#
+# Save this file as scripts/export_profile.toml to make the settings active, or
+# point a script at it with --config scripts/export_profile.toml.example.
+# reexport_all.ps1 owns bundle presets such as Foundations vs ml; this profile
+# only controls how the exporter and consolidators render each run.
+
+[export_notebooks]
+source_dir = "ml"
+output_dir = "export"
+formats = ["html", "pdf", "markdown"]
+workers = 8
+
+[export_notebooks.filters]
+# Omit glossary sections inside notebooks for these formats.
+exclude_glossary_formats = []
+# Keep dedicated 99_Glossare notebooks even when glossary sections are omitted.
+keep_glossary_notebooks = true
+
+[export_notebooks.styles.html]
+# Uncomment to tune exported HTML notebook pages.
+# body_padding = "0 0.5rem"
+# content_font_size = "10pt"
+# content_line_height = "1.45"
+# image_max_width = "900px"
+# image_max_height = "70vh"
+# image_margin = "0.5rem auto"
+
+[export_notebooks.styles.pdf]
+page_format = "A4"
+content_font_size = "7.5pt"
+content_font_size_small = "6.75pt"
+code_font_size = "6pt"
+content_line_height = "1.32"
+heading_line_height = "1.2"
+body_padding = "0 0.15in"
+page_margin = "0.4in 0.2in"
+table_font_size = "7.5pt"
+table_cell_padding = "0.10rem 0.20rem"
+image_max_width = "min(100%, 5.6in)"
+image_max_height = "3.5in"
+image_margin = "0.08in auto 0.12in"
+
+[consolidate_htmls]
+html_dir = "exports/Foundations/html"
+output_dir = "exports/Foundations/html"
+output_name = "Foundations_reference.html"
+title = "Mathematik Foundations"
+
+[consolidate_htmls.filters]
+# Example: exclude_chapters = ["99_Glossare"]
+exclude_chapters = []
+
+[consolidate_htmls.layout]
+sidebar_width = "280px"
+content_max_width = "1000px"
+content_padding = "2rem 3rem"
+hide_sidebar_below = "900px"
+body_font_family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+sidebar_background = "#1e1e2e"
+sidebar_text = "#cdd6f4"
+title_color = "#cba6f7"
+accent = "#89b4fa"
+divider = "#e0e0e0"
+notebook_image_max_width = "100%"
+notebook_image_max_height = "none"
+section_break_after = "always"
+
+[consolidate_pdfs]
+pdf_dir = "exports/ml/pdf"
+output_dir = "exports/ml/pdf"
+output_name = "MachineLearning_Math.pdf"
+title = "Mathematische Grundlagen für Machine Learning"
+include_cover = true
+
+[consolidate_pdfs.filters]
+# Example: exclude_chapters = ["99_Glossare"]
+exclude_chapters = []
+
+[consolidate_pdfs.metadata]
+subject = "Mathematische Grundlagen für Machine Learning"
+creator = "Stefan Ploch"
+
+[consolidate_pdfs.cover]
+subtitle = "Konsolidierte Kompaktreferenz aus den zugehörigen Jupyter Notebooks. Siehe https://github.com/officialstjp/python-math"
+footer_note = "Stefan Ploch, 2026"
