@@ -122,6 +122,183 @@ ANIMATION_EXPORT_PLACEHOLDER = (
 
 HTML_EXPORT_CSS_MARKER = "/* HTML export layout overrides */"
 
+DETAILS_OPEN_TAG_PATTERN = re.compile(
+    r"<details(\\s[^>]*)?>",
+    re.IGNORECASE,
+)
+
+
+# ============================================================================
+# SIDE-BY-SIDE ZUSAMMENFASSUNG / GLOSSAR TRANSFORM
+# ============================================================================
+
+# ============================================================================
+# HEADING SECTION WRAPPER (keep content under a heading together)
+# ============================================================================
+
+# The heading-content cohesion is handled via CSS print rules:
+#   - break-after: avoid on h1–h6 (don't leave heading at bottom of page)
+#   - break-before: avoid on p, ul, ol (don't leave content orphaned at top)
+# HTML-wrapping approaches caused cascading page breaks.
+
+_SBS_CLASS_SUMMARY = "side-by-side-summary"
+_SBS_CLASS_GLOSSARY = "side-by-side-glossary"
+_SBS_SECTION_CLASS = "side-by-side-section"
+_SBS_COLUMN_CLASS = "side-by-side-column"
+_SBS_DIVIDER_CLASS = "side-by-side-divider"
+
+# Headings that nbconvert renders with predictable id attributes.
+_SBS_ZUSAMMENFASSUNG_ID = "Zusammenfassung"
+_SBS_GLOSSAR_ID = "Glossar"
+
+
+def _build_side_by_side_css(config: dict, media: str = "screen") -> str:
+    """Build CSS rules for the side-by-side Zusammenfassung / Glossar layout.
+
+    ``media`` should be ``"screen"`` for HTML exports and ``"print"`` for PDF.
+    """
+    gap = config.get("gap", "2rem")
+    min_width = config.get("min_column_width", "280px")
+    equal = config.get("equal_columns", True)
+    show_divider = config.get("show_divider", False)
+
+    column_flex = "1 1 0" if equal else "1 1 auto"
+    table_font_size = config.get("table_font_size", "9pt")
+
+    rules = [
+        f""".{_SBS_SECTION_CLASS} {{
+    display: flex !important;
+    gap: {gap};
+    align-items: flex-start;
+    margin-top: 0.4em;
+    margin-bottom: 0.4em;
+}}""",
+        f""".{_SBS_COLUMN_CLASS} {{
+    flex: {column_flex} !important;
+    min-width: 0 !important;
+    overflow: hidden;
+}}""",
+        f""".{_SBS_COLUMN_CLASS} h2 {{
+    margin-top: 0;
+}}""",
+        f""".{_SBS_COLUMN_CLASS} table {{
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    margin-top: 0.5em;
+    font-size: {table_font_size} !important;
+}}""",
+        f""".{_SBS_COLUMN_CLASS} td, .{_SBS_COLUMN_CLASS} th {{
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto;
+}}""",
+        # Relax MathJax nowrap inside side-by-side columns
+        # so formulas can wrap instead of overflowing the column.
+        f""".{_SBS_COLUMN_CLASS} td .MathJax_CHTML,""",
+        f""".{_SBS_COLUMN_CLASS} th .MathJax_CHTML {{""",
+        "    white-space: normal !important;",
+        "    display: inline !important;",
+        "}",
+        f""".{_SBS_COLUMN_CLASS} td mjx-container,""",
+        f""".{_SBS_COLUMN_CLASS} th mjx-container {{""",
+        "    white-space: normal !important;",
+        "    display: inline !important;",
+        "}",
+        f""".{_SBS_COLUMN_CLASS} td:has(.MathJax_CHTML),""",
+        f""".{_SBS_COLUMN_CLASS} td:has(mjx-container) {{""",
+        "    white-space: normal;",
+        "}",
+    ]
+
+    if show_divider:
+        rules.append(f""".{_SBS_DIVIDER_CLASS} {{
+    width: 1px;
+    background: #d8dee9;
+    align-self: stretch;
+    margin: 0 {gap};
+}}""")
+
+    if media == "screen":
+        rules.append("""@media (max-width: 650px) {
+    .side-by-side-section {
+        flex-direction: column;
+    }
+    .side-by-side-divider {
+        width: 100%;
+        height: 1px;
+        margin: 0.5rem 0;
+    }
+}""")
+
+    return "\n".join(rules)
+
+
+def _transform_side_by_side_html(html: str) -> str:
+    """Post-process nbconvert HTML: wrap consecutive Zusammenfassung + Glossar
+    sections inside a single rendered-markdown cell into a flex container.
+
+    The transformation is skipped for cells that only contain one of the two
+    sections, or where they appear in separate cells.
+    """
+
+    def _wrap_cell(cell_match: re.Match) -> str:
+        """Try to wrap Zusammenfassung + Glossar within one markdown cell."""
+        content = cell_match.group(0)
+        z_id = f'id="{_SBS_ZUSAMMENFASSUNG_ID}"'
+        g_id = f'id="{_SBS_GLOSSAR_ID}"'
+
+        z_match = re.search(
+            rf'<h2\s+[^>]*\b{z_id}[^>]*>.*?</h2>',
+            content,
+            re.DOTALL,
+        )
+        g_match = re.search(
+            rf'<h2\s+[^>]*\b{g_id}[^>]*>.*?</h2>',
+            content,
+            re.DOTALL,
+        )
+        if not z_match or not g_match:
+            return content
+
+        # Find the <hr/> separator located between the two headings.
+        between_start = z_match.end()
+        between_end = g_match.start()
+        between = content[between_start:between_end]
+        hr_match = re.search(r"<hr/>", between)
+        if not hr_match:
+            return content
+
+        hr_pos = between_start + hr_match.start()
+
+        before = content[: z_match.start()]
+        summary_block = content[z_match.start() : hr_pos]
+        glossary_block = content[g_match.start() :]
+
+        divider_html = ""
+        if _SBS_DIVIDER_CLASS in content:
+            divider_html = f'<div class="{_SBS_DIVIDER_CLASS}"></div>'
+
+        return (
+            f"{before}"
+            f'<div class="{_SBS_SECTION_CLASS}">'
+            f'<div class="{_SBS_COLUMN_CLASS} {_SBS_CLASS_SUMMARY}">'
+            f"{summary_block}"
+            f"</div>"
+            f"{divider_html}"
+            f'<div class="{_SBS_COLUMN_CLASS} {_SBS_CLASS_GLOSSARY}">'
+            f"{glossary_block}"
+            f"</div>"
+            f"</div>"
+        )
+
+    return re.sub(
+        r"<div[^>]*class=\"[^\"]*\bjp-RenderedMarkdown\b[^\"]*\"[^>]*>.*?</div>",
+        _wrap_cell,
+        html,
+        flags=re.DOTALL,
+    )
+
 
 def _css_rule(name: str, value: str | None, indent: str = "    ") -> str:
     """Build a single CSS property rule when a value is configured."""
@@ -135,7 +312,10 @@ def _join_rules(*rules: str) -> str:
     return "\n".join(rule for rule in rules if rule)
 
 
-def _build_html_export_css(style: dict[str, str | None]) -> str:
+def _build_html_export_css(
+    style: dict[str, str | None],
+    side_by_side_config: dict | None = None,
+) -> str:
     """Build CSS injected into exported HTML files."""
     sections = [
         HTML_EXPORT_CSS_MARKER,
@@ -180,11 +360,29 @@ def _build_html_export_css(style: dict[str, str | None]) -> str:
             )
         )
 
+    # Side-by-side Zusammenfassung / Glossar CSS (screen mode)
+    if side_by_side_config and side_by_side_config.get("enabled", True):
+        sections.append(
+            "/* Side-by-side Zusammenfassung / Glossar */\n"
+            + _build_side_by_side_css(side_by_side_config, media="screen")
+        )
+
     return "<style>\n" + "\n".join(sections) + "\n</style>"
 
 
-def _build_pdf_print_css(style: dict[str, str]) -> str:
+def _build_pdf_print_css(
+    style: dict[str, str],
+    side_by_side_config: dict | None = None,
+) -> str:
     """Build the print CSS injected before Playwright renders a PDF."""
+    side_by_side_css = ""
+    if side_by_side_config and side_by_side_config.get("enabled", True):
+        side_by_side_css = (
+            "/* ── 5. Side-by-side Zusammenfassung / Glossar ──────────────── */\n"
+            + _build_side_by_side_css(side_by_side_config, media="print")
+            + "\n"
+        )
+
     return f"""
 <style type="text/css">
 /* ── 1. Compact fonts ──────────────────────────────────────────── */
@@ -219,19 +417,22 @@ body.jp-Notebook {{
 
 /* ── 2. Table formula layout ───────────────────────────────────── */
 .jp-RenderedHTMLCommon table {{
-    table-layout: auto;
+    table-layout: fixed;
     width: auto;
     max-width: 100%;
     border-collapse: collapse;
     font-size: {style['table_font_size']} !important;
     margin-left: 0;
     margin-right: 0;
+    margin-top: 0.4em;
 }}
 .jp-RenderedHTMLCommon th,
 .jp-RenderedHTMLCommon td {{
     padding: {style['table_cell_padding']} !important;
     vertical-align: top;
     border: 1px solid #ddd;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }}
 .jp-RenderedHTMLCommon th {{ background: #f5f5f5; font-weight: 600; }}
 .jp-RenderedHTMLCommon td .MathJax_CHTML, .jp-RenderedHTMLCommon th .MathJax_CHTML {{ white-space: nowrap !important; display: inline !important; }}
@@ -243,14 +444,22 @@ body.jp-Notebook {{
 .jp-RenderedHTMLCommon td mjx-container, .jp-RenderedHTMLCommon th mjx-container {{ display: inline !important; white-space: nowrap !important; }}
 .jp-RenderedHTMLCommon td:has(.MathJax_CHTML), .jp-RenderedHTMLCommon td:has(mjx-container) {{ white-space: nowrap; }}
 
-/* ── 3. Smart page breaks ──────────────────────────────────────── */
+/* ── 3. Smart page breaks ─────────────────────────────────────── */
 @page {{ margin: {style['page_margin']}; }}
-table {{ break-inside: avoid; }}
-h1, h2, h3, h4,
+table {{ break-inside: avoid; break-before: avoid; }}
+hr {{ break-after: avoid; break-before: avoid; }}
+h1, h2, h3, h4, h5, h6,
 .jp-RenderedHTMLCommon h1, .jp-RenderedHTMLCommon h2,
-.jp-RenderedHTMLCommon h3, .jp-RenderedHTMLCommon h4 {{ break-after: avoid; }}
+.jp-RenderedHTMLCommon h3, .jp-RenderedHTMLCommon h4,
+.jp-RenderedHTMLCommon h5, .jp-RenderedHTMLCommon h6 {{ break-after: avoid; }}
+h1 + p, h2 + p, h3 + p, h4 + p, h5 + p, h6 + p,
+h1 + ul, h2 + ul, h3 + ul, h4 + ul, h5 + ul, h6 + ul,
+h1 + ol, h2 + ol, h3 + ol, h4 + ol, h5 + ol, h6 + ol,
+h1 + table, h2 + table, h3 + table, h4 + table, h5 + table, h6 + table {{ break-before: avoid; }}
 p, li {{ orphans: 3; widows: 3; }}
 .jp-OutputArea-output img, .jp-OutputArea-output svg {{ break-inside: avoid; }}
+.MathJax_Display,
+mjx-container[display="true"] {{ break-inside: avoid; break-before: avoid; }}
 
 /* ── 4. Image sizing for print ─────────────────────────────────── */
 .jp-OutputArea-output {{ text-align: center; }}
@@ -264,7 +473,7 @@ p, li {{ orphans: 3; widows: 3; }}
     object-fit: contain;
     margin: {style['image_margin']};
 }}
-</style>
+{side_by_side_css}</style>
 """
 
 
@@ -390,6 +599,60 @@ def _cell_source_to_text(cell: dict) -> str:
     return str(source)
 
 
+def _set_cell_source(cell: dict, text: str) -> dict:
+    """Write normalized text back to a cell source, preserving list/string shape."""
+    updated = copy.deepcopy(cell)
+    source = updated.get("source", "")
+    if isinstance(source, list):
+        updated["source"] = [text]
+    else:
+        updated["source"] = text
+    return updated
+
+
+def _expand_markdown_details(source: str) -> str:
+    """Force markdown <details> blocks to be expanded in static exports."""
+
+    def _add_open_attribute(match: re.Match) -> str:
+        tag = match.group(0)
+        if re.search(r"\\bopen\\b", tag, re.IGNORECASE):
+            return tag
+        return tag[:-1] + " open>"
+
+    return DETAILS_OPEN_TAG_PATTERN.sub(_add_open_attribute, source)
+
+
+def _split_markdown_before_glossary(cell: dict) -> tuple[dict | None, bool]:
+    """Return the markdown cell truncated before the first glossary heading."""
+
+    if cell.get("cell_type") != "markdown":
+        return cell, False
+
+    source_text = _cell_source_to_text(cell)
+    glossary_match = None
+
+    for pattern in GLOSSARY_HEADING_PATTERNS:
+        match = re.search(pattern, source_text, flags=re.IGNORECASE | re.MULTILINE)
+        if match and (glossary_match is None or match.start() < glossary_match.start()):
+            glossary_match = match
+
+    if glossary_match is None:
+        return cell, False
+
+    before_glossary = source_text[: glossary_match.start()]
+    # Drop trailing horizontal rules that only served as separators to the glossary
+    before_glossary = re.sub(r"(?:\s*<hr\s*/?>\s*)+$", "", before_glossary, flags=re.IGNORECASE)
+    trimmed = before_glossary.rstrip()
+
+    if not trimmed.strip():
+        return None, True
+
+    if not trimmed.endswith("\n"):
+        trimmed += "\n"
+
+    return _set_cell_source(cell, trimmed), True
+
+
 def _cell_requests_animation_export(cell: dict) -> bool:
     """Detect code cells that render an animation into notebook HTML output."""
     if cell.get("cell_type") != "code":
@@ -427,6 +690,7 @@ def preprocess_notebook(
     no_exercises: bool = False,
     no_glossary: bool = False,
     strip_animation_outputs: bool = True,
+    expand_details: bool = False,
 ) -> Path | None:
     """
     Apply content filters to a notebook and write the result to a temp file.
@@ -453,6 +717,7 @@ def preprocess_notebook(
         and not no_glossary
         and not has_input_tags
         and not strip_animation_outputs
+        and not expand_details
     ):
         return None
 
@@ -472,12 +737,19 @@ def preprocess_notebook(
             if _is_exercise_cell(source):
                 continue
 
+        if expand_details and cell_type == "markdown":
+            source = _cell_source_to_text(cell)
+            expanded_source = _expand_markdown_details(source)
+            if expanded_source != source:
+                cell = _set_cell_source(cell, expanded_source)
+
         # Optionally skip glossary sections in compact PDF exports.
         if no_glossary and cell_type == "markdown":
-            source = "".join(cell.get("source", []))
-            if _is_glossary_cell(source):
+            cell, hit_glossary = _split_markdown_before_glossary(cell)
+            if hit_glossary:
                 skip_remaining_for_glossary = True
-                continue
+                if cell is None:
+                    continue
 
         # Optionally strip text-only outputs from code cells
         if strip_animation_outputs and cell_type == "code":
@@ -551,22 +823,83 @@ def _fix_markdown_image_paths(md_path: Path) -> None:
     md_path.write_text(text, encoding="utf-8")
 
 
-def _inject_html_export_css(html_path: Path, html_style: dict[str, str | None]) -> None:
-    """Inject HTML export CSS into an exported notebook file."""
+def _inject_html_export_css(
+    html_path: Path,
+    html_style: dict[str, str | None],
+    *,
+    side_by_side_config: dict | None = None,
+) -> None:
+    """Inject HTML export CSS and side-by-side transform into an exported notebook file."""
     if not html_path.exists():
         return
     html = html_path.read_text(encoding="utf-8")
     if HTML_EXPORT_CSS_MARKER in html:
         return  # already injected
-    html = html.replace("</head>", _build_html_export_css(html_style) + "\n</head>", 1)
+
+    # Inject CSS (including side-by-side rules)
+    html = html.replace(
+        "</head>",
+        _build_html_export_css(html_style, side_by_side_config=side_by_side_config) + "\n</head>",
+        1,
+    )
+
+    # Apply side-by-side Zusammenfassung / Glossar HTML transform
+    if side_by_side_config and side_by_side_config.get("enabled", True):
+        html = _transform_side_by_side_html(html)
+
+    # Inject dark mode script right after opening <body> tag
+    dark_mode_script = """
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const body = document.body;
+
+      const setDarkMode = (isDark) => {
+        if (isDark) {
+          body.setAttribute("data-jp-theme-light", "false");
+          body.setAttribute("data-jp-theme-name", "JupyterLab Dark");
+          localStorage.setItem("theme", "dark");
+        } else {
+          body.setAttribute("data-jp-theme-light", "true");
+          body.setAttribute("data-jp-theme-name", "JupyterLab Light");
+          localStorage.setItem("theme", "light");
+        }
+      };
+
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        setDarkMode(true);
+      } else {
+        setDarkMode(false);
+      }
+    });
+    </script>
+    """
+    import re
+    html = re.sub(r"(<body[^>]*>)", r"\1\n" + dark_mode_script.replace("\\", "\\\\"), html, count=1)
+
     html_path.write_text(html, encoding="utf-8")
 
 
-def _html_to_pdf(html_path: Path, pdf_path: Path, pdf_style: dict[str, str]) -> None:
+def _html_to_pdf(
+    html_path: Path,
+    pdf_path: Path,
+    pdf_style: dict[str, str],
+    *,
+    side_by_side_config: dict | None = None,
+) -> None:
     """Convert an HTML file to PDF via Playwright Chromium with print CSS injected."""
     html = html_path.read_text(encoding="utf-8")
+
+    # Apply side-by-side HTML transform before injecting print CSS
+    if side_by_side_config and side_by_side_config.get("enabled", True):
+        html = _transform_side_by_side_html(html)
+
     # Inject print-optimised CSS before </head>
-    html = html.replace("</head>", _build_pdf_print_css(pdf_style) + "\n</head>", 1)
+    html = html.replace(
+        "</head>",
+        _build_pdf_print_css(pdf_style, side_by_side_config=side_by_side_config) + "\n</head>",
+        1,
+    )
 
     tmp = tempfile.NamedTemporaryFile(
         suffix=".html", delete=False, mode="w", encoding="utf-8",
@@ -631,7 +964,9 @@ def export_notebook(
     no_text_output: bool = False,
     no_exercises: bool = False,
     no_glossary: bool = False,
+    expand_details: bool = False,
     keep_glossary_notebooks: bool = True,
+    side_by_side_config: dict | None = None,
 ) -> bool:
     """
     Export a single notebook to the given format.
@@ -662,6 +997,7 @@ def export_notebook(
         no_exercises=no_exercises,
         no_glossary=filter_glossary_sections,
         strip_animation_outputs=True,
+        expand_details=expand_details,
     )
     notebook_to_export = processed if processed else notebook
 
@@ -697,7 +1033,11 @@ def export_notebook(
             return False
         # Post-process HTML with layout fixes and optional sizing overrides.
         if fmt == "html":
-            _inject_html_export_css(dest_dir / f"{notebook.stem}.html", html_style)
+            _inject_html_export_css(
+                dest_dir / f"{notebook.stem}.html",
+                html_style,
+                side_by_side_config=side_by_side_config,
+            )
 
         # Post-process markdown to fix absolute image paths
         if fmt == "markdown":
@@ -707,7 +1047,10 @@ def export_notebook(
         if fmt == "pdf":
             html_file = dest_dir / f"{notebook.stem}.html"
             pdf_file = dest_dir / f"{notebook.stem}.pdf"
-            _html_to_pdf(html_file, pdf_file, pdf_style)
+            _html_to_pdf(
+                html_file, pdf_file, pdf_style,
+                side_by_side_config=side_by_side_config,
+            )
             html_file.unlink(missing_ok=True)
 
         print(f"  OK    {relative} -> {fmt}")
@@ -791,6 +1134,15 @@ def main() -> int:
         help="Exclude exercise and solution sections (Verständnis-Check, Lösungen)",
     )
     parser.add_argument(
+        "--expand-details",
+        action="store_true",
+        default=settings["filters"].get("expand_details", False),
+        help=(
+            "Expand markdown <details> blocks in static exports so collapsed "
+            "challenge/solution content is visible"
+        ),
+    )
+    parser.add_argument(
         "--exclude-glossary-formats",
         nargs="+",
         choices=VALID_FORMATS,
@@ -830,6 +1182,12 @@ def main() -> int:
         default=settings["workers"],
         help=f"Number of parallel export workers (default: {settings['workers']}, use 1 to disable)",
     )
+    parser.add_argument(
+        "--no-side-by-side",
+        action="store_true",
+        default=False,
+        help="Disable side-by-side Zusammenfassung / Glossar layout in exports",
+    )
 
     args = parser.parse_args()
     source_dir = resolve_repo_path(repo_root, args.source_dir)
@@ -845,6 +1203,13 @@ def main() -> int:
     keep_glossary_notebooks = not args.skip_glossary_notebooks
     html_style = settings["styles"]["html"]
     pdf_style = settings["styles"]["pdf"]
+
+    # Side-by-side config: per-format, overridable by --no-side-by-side
+    html_sbs = settings["styles"]["html"].get("side_by_side", {})
+    pdf_sbs = settings["styles"]["pdf"].get("side_by_side", {})
+    if args.no_side_by_side:
+        html_sbs = {"enabled": False}
+        pdf_sbs = {"enabled": False}
 
     invalid_formats = sorted(set(configured_formats) - set(VALID_FORMATS))
     invalid_glossary_formats = sorted(exclude_glossary_formats - set(VALID_FORMATS))
@@ -877,6 +1242,7 @@ def main() -> int:
     print(f"  Code:    {'hidden' if no_input else 'visible'}")
     print(f"  Text output: {'stripped' if args.no_text_output else 'included'}")
     print(f"  Exercises:   {'excluded' if args.no_exercises else 'included'}")
+    print(f"  Details blocks: {'expanded' if args.expand_details else 'as-authored'}")
     print(
         "  Glossary sections omitted for: "
         f"{', '.join(sorted(exclude_glossary_formats)) if exclude_glossary_formats else 'none'}"
@@ -886,6 +1252,15 @@ def main() -> int:
         f"{'included' if keep_glossary_notebooks else 'skipped when glossary is omitted'}"
     )
     print(f"  Workers: {args.workers}")
+    sbs_enabled_html = html_sbs.get("enabled", True) and not args.no_side_by_side
+    sbs_enabled_pdf = pdf_sbs.get("enabled", True) and not args.no_side_by_side
+    sbs_parts = []
+    if "html" in configured_formats:
+        sbs_parts.append(f"HTML={'on' if sbs_enabled_html else 'off'}")
+    if "pdf" in configured_formats:
+        sbs_parts.append(f"PDF={'on' if sbs_enabled_pdf else 'off'}")
+    if sbs_parts:
+        print(f"  Side-by-side: {', '.join(sbs_parts)}")
     print(f"  Found:   {len(notebooks)} notebook(s)")
     print()
 
@@ -901,6 +1276,7 @@ def main() -> int:
 
         if args.workers > 1 and fmt_total > 1:
             # Parallel export
+            sbs_config = html_sbs if fmt == "html" else (pdf_sbs if fmt == "pdf" else None)
             with ThreadPoolExecutor(max_workers=args.workers) as pool:
                 futures = {
                     pool.submit(
@@ -909,7 +1285,9 @@ def main() -> int:
                         no_text_output=args.no_text_output,
                         no_exercises=args.no_exercises,
                         no_glossary=no_glossary_for_format,
+                        expand_details=args.expand_details,
                         keep_glossary_notebooks=keep_glossary_notebooks,
+                        side_by_side_config=sbs_config,
                     ): nb
                     for nb in fmt_notebooks
                 }
@@ -919,6 +1297,7 @@ def main() -> int:
                         failed += 1
         else:
             # Sequential fallback
+            sbs_config = html_sbs if fmt == "html" else (pdf_sbs if fmt == "pdf" else None)
             for nb in fmt_notebooks:
                 total += 1
                 success = export_notebook(
@@ -926,7 +1305,9 @@ def main() -> int:
                     no_text_output=args.no_text_output,
                     no_exercises=args.no_exercises,
                     no_glossary=no_glossary_for_format,
+                    expand_details=args.expand_details,
                     keep_glossary_notebooks=keep_glossary_notebooks,
+                    side_by_side_config=sbs_config,
                 )
                 if not success:
                     failed += 1

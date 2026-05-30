@@ -26,6 +26,13 @@ keep_glossary_notebooks = true
 # image_max_height = "70vh"
 # image_margin = "0.5rem auto"
 
+[export_notebooks.styles.html.side_by_side]
+enabled = true
+gap = "2rem"              # space between columns
+min_column_width = "280px" # below this, columns stack vertically
+equal_columns = true       # flex: 1 1 0 vs 1 1 auto
+show_divider = false       # optional vertical divider line
+
 [export_notebooks.styles.pdf]
 page_format = "A4"
 content_font_size = "7.5pt"
@@ -40,6 +47,13 @@ table_cell_padding = "0.10rem 0.20rem"
 image_max_width = "min(100%, 5.6in)"
 image_max_height = "3.5in"
 image_margin = "0.08in auto 0.12in"
+
+[export_notebooks.styles.pdf.side_by_side]
+enabled = true
+gap = "1.2rem"
+min_column_width = "220px"
+equal_columns = true
+show_divider = false
 
 [consolidate_htmls]
 html_dir = "exports/Foundations/html"

@@ -129,12 +129,16 @@ try {
 
         $exportArgs = @("scripts/py/export_notebooks.py") +
             $configArgs +
-            @("--formats") +
-            $selectedFormats +
-            @(
+            @("--formats") + $selectedFormats
+
+        # When a config file is provided, let the TOML drive source/output dirs;
+        # otherwise fall back to the preset values.
+        if ($configArgs.Count -eq 0) {
+            $exportArgs += @(
                 "--source-dir", $preset.SourceDir,
                 "--output-dir", $outputDir
             )
+        }
 
         if ($null -ne $Workers) {
             $exportArgs += @("--workers", "$Workers")
@@ -151,29 +155,31 @@ try {
         Invoke-ExportStep -Label "$name exports" -Arguments $exportArgs
 
         if ($selectedFormats -contains "pdf") {
-            Invoke-ExportStep -Label "$name consolidated PDF" -Arguments (
-                @("scripts/py/consolidate_pdfs.py") +
-                $configArgs +
-                @(
+            $consolidatePdfArgs = @("scripts/py/consolidate_pdfs.py") + $configArgs
+            # When a config file is provided, let the TOML drive paths/titles;
+            # otherwise fall back to the preset values.
+            if ($configArgs.Count -eq 0) {
+                $consolidatePdfArgs += @(
                     "--pdf-dir", "$outputDir/pdf",
                     "--output-dir", "$outputDir/pdf",
                     "--title", $title,
                     "--output-name", $pdfName
                 )
-            )
+            }
+            Invoke-ExportStep -Label "$name consolidated PDF" -Arguments $consolidatePdfArgs
         }
 
         if ($selectedFormats -contains "html") {
-            Invoke-ExportStep -Label "$name consolidated HTML" -Arguments (
-                @("scripts/py/consolidate_htmls.py") +
-                $configArgs +
-                @(
+            $consolidateHtmlArgs = @("scripts/py/consolidate_htmls.py") + $configArgs
+            if ($configArgs.Count -eq 0) {
+                $consolidateHtmlArgs += @(
                     "--html-dir", "$outputDir/html",
                     "--output-dir", "$outputDir/html",
                     "--title", $title,
                     "--output-name", $htmlName
                 )
-            )
+            }
+            Invoke-ExportStep -Label "$name consolidated HTML" -Arguments $consolidateHtmlArgs
         }
     }
 }

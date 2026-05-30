@@ -1,0 +1,102 @@
+# "Full notebooks" export profile — same rendering as the reference profile,
+# but with all content included: exercises, text output, and glossary sections.
+#
+# Save this file as scripts/export_profile_full.toml to activate it, or
+# pass it explicitly:
+#     .\scripts\reexport_all.ps1 -FullContent
+#
+# This profile exports to exports_full/ to keep full-content builds separate
+# from the compact reference builds under exports/.
+
+[export_notebooks]
+source_dir = "Foundations"
+output_dir = "exports_short/Foundations"
+formats = ["html", "pdf", "markdown"]
+workers = 16
+
+[export_notebooks.filters]
+exclude_glossary_formats = ["pdf", "html"]
+keep_glossary_notebooks = true
+no_exercises = true
+no_text_output = true
+
+[export_notebooks.styles.html]
+# Uncomment to tune exported HTML notebook pages.
+# body_padding = "0 0.5rem"
+# content_font_size = "10pt"
+# content_line_height = "1.45"
+# image_max_width = "900px"
+# image_max_height = "70vh"
+# image_margin = "0.5rem auto"
+[export_notebooks.styles.html.side_by_side]
+enabled = false
+gap = "2rem"              # space between columns
+min_column_width = "280px" # below this, columns stack vertically
+equal_columns = true       # flex: 1 1 0 vs 1 1 auto
+show_divider = false       # optional vertical divider line
+table_font_size = "9pt"   # font size for tables inside side-by-side columns
+
+[export_notebooks.styles.pdf]
+page_format = "A4"
+content_font_size = "9.5pt"
+content_font_size_small = "8.0pt"
+code_font_size = "9pt"
+content_line_height = "1.32"
+heading_line_height = "1.2"
+body_padding = "0 0.15in"
+page_margin = "0.4in 0.2in"
+table_font_size = "9.5pt"
+table_cell_padding = "0.20rem 0.40rem"
+image_max_width = "min(100%, 7in)"
+image_max_height = "3.5in"
+image_margin = "0.08in auto 0.12in"
+
+[export_notebooks.styles.pdf.side_by_side]
+enabled = false
+gap = "0.2in"              # increased from 1.2rem for better PDF rendering
+min_column_width = "220px"
+equal_columns = true
+show_divider = false
+table_font_size = "8.5pt"  # slightly smaller in PDF columns so tables fit
+
+[consolidate_htmls]
+html_dir = "exports_short/Foundations/html"
+output_dir = "exports_short/Foundations/html"
+output_name = "Foundations_short.html"
+title = "Mathematik Foundations"
+
+[consolidate_htmls.filters]
+exclude_chapters = []
+
+[consolidate_htmls.layout]
+sidebar_width = "280px"
+content_max_width = "1000px"
+content_padding = "2rem 3rem"
+hide_sidebar_below = "900px"
+body_font_family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+sidebar_background = "#1e1e2e"
+sidebar_text = "#cdd6f4"
+title_color = "#cba6f7"
+accent = "#89b4fa"
+divider = "#e0e0e0"
+notebook_image_max_width = "100%"
+notebook_image_max_height = "none"
+section_break_after = "always"
+
+[consolidate_pdfs]
+pdf_dir = "exports_short/Foundations/pdf"
+output_dir = "exports_short/Foundations/pdf"
+output_name = "Foundations_short.pdf"
+title = "Mathematik Foundations"
+include_cover = true
+
+[consolidate_pdfs.filters]
+exclude_chapters = []
+
+[consolidate_pdfs.metadata]
+subject = "Mathematik Foundations"
+creator = "Stefan Ploch"
+
+[consolidate_pdfs.cover]
+subtitle = "Zusammenfassung der Mathematik bis Matura-niveau (Kurzversion)"
+footer_note = "Stefan Ploch, 2026"

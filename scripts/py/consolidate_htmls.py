@@ -319,6 +319,59 @@ main.content {{
   main.content {{ margin-left: 0; padding: 1rem; }}
 }}
 
+body.dark-mode {{
+  --bg-main: #181825;
+  --bg-sidebar: #11111b;
+  --text-sidebar: #cdd6f4;
+  --accent: #cba6f7;
+  --divider: #45475a;
+  
+  /* OVERRIDE JUPYTER THEME VARIABLES FOR DARK MODE */
+  --jp-layout-color0: #181825;
+  --jp-layout-color1: #1e1e2e;
+  --jp-layout-color2: #313244;
+  --jp-layout-color3: #45475a;
+  --jp-layout-color4: #585b70;
+  
+  --jp-ui-font-color0: #cdd6f4;
+  --jp-ui-font-color1: #bac2de;
+  --jp-ui-font-color2: #a6adc8;
+  --jp-ui-font-color3: #7f849c;
+
+  --jp-content-font-color0: #cdd6f4;
+  --jp-content-font-color1: #bac2de;
+  --jp-content-font-color2: #a6adc8;
+  --jp-content-font-color3: #7f849c;
+
+  --jp-border-color0: #181825;
+  --jp-border-color1: #1e1e2e;
+  --jp-border-color2: #313244;
+  --jp-border-color3: #45475a;
+
+  --jp-cell-editor-background: #11111b;
+  --jp-cell-editor-border-color: #313244;
+  
+  --jp-mirror-editor-comment-color: #6c7086;
+  --jp-mirror-editor-keyword-color: #cba6f7;
+  --jp-mirror-editor-string-color: #a6e3a1;
+  --jp-mirror-editor-number-color: #fab387;
+  --jp-mirror-editor-operator-color: #89dceb;
+  --jp-mirror-editor-def-color: #89b4fa;
+  --jp-mirror-editor-variable-color: #cdd6f4;
+
+  color: #cdd6f4;
+}}
+body.dark-mode .section-title {{ color: #cdd6f4; }}
+body.dark-mode .section-chapter {{ color: #a6adc8; }}
+body.dark-mode nav.sidebar h1 {{ border-bottom-color: #45475a; }}
+body.dark-mode nav.sidebar .toc-notebook a:hover {{ background: #313244; color: #f5e0dc; }}
+body.dark-mode hr.section-divider {{ border-top-color: #45475a; }}
+body.dark-mode .notebook-content th {{ background: #313244; border-color: #45475a; }}
+body.dark-mode .notebook-content td {{ border-color: #45475a; }}
+body.dark-mode .jp-RenderedHTMLCommon table {{ color: #cdd6f4; }}
+body.dark-mode .jp-RenderedHTMLCommon tbody tr:nth-child(odd) {{ background: #181825; }}
+body.dark-mode .jp-RenderedHTMLCommon tbody tr:nth-child(even) {{ background: #1e1e2e; }}
+
 .notebook-content .jp-Cell {{ margin-bottom: 0.5rem; }}
 .notebook-content img {{
   max-width: {layout['notebook_image_max_width']};
@@ -438,6 +491,7 @@ MathJax = {{
 
 <nav class="sidebar">
   <h1>{title}</h1>
+  <button id="theme-toggle" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; cursor: pointer; background: var(--bg-sidebar); color: var(--text-sidebar); border: 1px solid var(--divider); border-radius: 4px;">Toggle Dark Mode</button>
   <ul>
     {toc_html}
   </ul>
@@ -446,6 +500,44 @@ MathJax = {{
 <main class="content">
   {sections_html}
 </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {{
+  const toggleBtn = document.getElementById("theme-toggle");
+  const body = document.body;
+  const notebookContainers = document.querySelectorAll(".notebook-content");
+
+  const setDarkMode = (isDark) => {{
+    if (isDark) {{
+      body.classList.add("dark-mode");
+      notebookContainers.forEach(container => {{
+        container.setAttribute("data-jp-theme-light", "false");
+        container.setAttribute("data-jp-theme-name", "JupyterLab Dark");
+      }});
+      localStorage.setItem("theme", "dark");
+    }} else {{
+      body.classList.remove("dark-mode");
+      notebookContainers.forEach(container => {{
+        container.setAttribute("data-jp-theme-light", "true");
+        container.setAttribute("data-jp-theme-name", "JupyterLab Light");
+      }});
+      localStorage.setItem("theme", "light");
+    }}
+  }};
+
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {{
+    setDarkMode(true);
+  }} else {{
+    setDarkMode(false);
+  }}
+
+  toggleBtn.addEventListener("click", () => {{
+    const isDark = body.classList.contains("dark-mode");
+    setDarkMode(!isDark);
+  }});
+}});
+</script>
 
 </body>
 </html>

@@ -30,6 +30,7 @@ NOTEBOOK_EXPORT_DEFAULTS: dict[str, Any] = {
         "keep_glossary_notebooks": True,
         "no_exercises": False,
         "no_text_output": False,
+        "expand_details": False,
     },
     "styles": {
         "html": {
@@ -39,6 +40,13 @@ NOTEBOOK_EXPORT_DEFAULTS: dict[str, Any] = {
             "image_max_width": None,
             "image_max_height": None,
             "image_margin": None,
+            "side_by_side": {
+                "enabled": True,
+                "gap": "2rem",
+                "min_column_width": "280px",
+                "equal_columns": True,
+                "show_divider": False,
+            },
         },
         "pdf": {
             "page_format": "A4",
@@ -51,9 +59,16 @@ NOTEBOOK_EXPORT_DEFAULTS: dict[str, Any] = {
             "page_margin": "0.6in 0.5in",
             "table_font_size": "8pt",
             "table_cell_padding": "0.16rem 0.3rem",
-            "image_max_width": "min(100%, 5.6in)",
+            "image_max_width": "min(100%, 7in)",
             "image_max_height": "3.7in",
             "image_margin": "0.08in auto 0.12in",
+            "side_by_side": {
+                "enabled": True,
+                "gap": "0.4in",
+                "min_column_width": "220px",
+                "equal_columns": True,
+                "show_divider": False,
+            },
         },
     },
 }
@@ -81,6 +96,13 @@ CONSOLIDATE_HTML_DEFAULTS: dict[str, Any] = {
         "notebook_image_max_width": "100%",
         "notebook_image_max_height": "none",
         "section_break_after": "always",
+    },
+    "side_by_side": {
+        "enabled": True,
+        "gap": "2rem",
+        "min_column_width": "280px",
+        "equal_columns": True,
+        "show_divider": False,
     },
 }
 

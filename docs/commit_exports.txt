@@ -1,0 +1,15 @@
+
+python scripts/py/export_notebooks.py --config scripts/templates/profiles/export_profile_schön.toml
+python scripts/py/consolidate_pdfs.py --config scripts/templates/profiles/export_profile_schön.toml
+python scripts/py/export_notebooks.py --config .\scripts\templates\profiles\export_profile_schön_short.toml
+python scripts/py/consolidate_pdfs.py --config .\scripts\templates\profiles\export_profile_schön_short.toml
+python scripts/py/export_notebooks.py --config .\scripts\templates\profiles\export_profile_ml_short.toml
+python scripts/py/consolidate_pdfs.py --config .\scripts\templates\profiles\export_profile_ml_short.toml
+
+cd dist
+git init
+git checkout -b exports
+git add .
+git commit -m "Deploy latest PDF exports"
+git remote add origin https://github.com/Officialstjp/python-math.git
+git push origin exports --force
