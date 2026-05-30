@@ -72,7 +72,7 @@ section_break_after = "always"
 pdf_dir = "dist/export/short/ml/pdf"
 output_dir = "dist/export/short/ml/pdf"
 output_name = "MachineLearning_Math.pdf"
-title = "Mathematische Grundlagen für Machine Learning"
+title = "Machine Learning Math"
 include_cover = true
 
 [consolidate_pdfs.filters]
@@ -80,9 +80,9 @@ include_cover = true
 exclude_chapters = []
 
 [consolidate_pdfs.metadata]
-subject = "Mathematische Grundlagen für Machine Learning"
+subject = "Machine Learning Math"
 creator = "Stefan Ploch"
 
 [consolidate_pdfs.cover]
-subtitle = "Konsolidierte Kompaktreferenz aus den zugehörigen Jupyter Notebooks. Siehe https://github.com/officialstjp/python-math"
+subtitle = "Mathematische Grundlagen für Machine Learning"
 footer_note = "Stefan Ploch, 2026"

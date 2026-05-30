@@ -1,8 +1,8 @@
 
-python scripts/py/export_notebooks.py --config scripts/templates/profiles/export_profile_schön.toml
-python scripts/py/consolidate_pdfs.py --config scripts/templates/profiles/export_profile_schön.toml
-python scripts/py/export_notebooks.py --config .\scripts\templates\profiles\export_profile_schön_short.toml
-python scripts/py/consolidate_pdfs.py --config .\scripts\templates\profiles\export_profile_schön_short.toml
+python scripts/py/export_notebooks.py --config scripts/templates/profiles/export_profile_schoen.toml
+python scripts/py/consolidate_pdfs.py --config scripts/templates/profiles/export_profile_schoen.toml
+python scripts/py/export_notebooks.py --config .\scripts\templates\profiles\export_profile_schoen_short.toml
+python scripts/py/consolidate_pdfs.py --config .\scripts\templates\profiles\export_profile_schoen_short.toml
 python scripts/py/export_notebooks.py --config .\scripts\templates\profiles\export_profile_ml_short.toml
 python scripts/py/consolidate_pdfs.py --config .\scripts\templates\profiles\export_profile_ml_short.toml
 
@@ -13,3 +13,7 @@ git add .
 git commit -m "Deploy latest PDF exports"
 git remote add origin https://github.com/Officialstjp/python-math.git
 git push origin exports --force
+
+dl links:
+https://raw.githubusercontent.com/Officialstjp/python-math/refs/heads/exports/export/short/Foundations/pdf/Foundations_short.pdf
+https://raw.githubusercontent.com/Officialstjp/python-math/refs/heads/exports/export/full/Foundations/pdf/Foundations_clean.pdf
