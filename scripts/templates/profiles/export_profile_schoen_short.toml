@@ -10,7 +10,7 @@
 
 [export_notebooks]
 source_dir = "Foundations"
-output_dir = "exports_short/Foundations"
+output_dir = "dist/export/short/Foundations"
 formats = ["html", "pdf", "markdown"]
 workers = 16
 
@@ -60,8 +60,8 @@ show_divider = false
 table_font_size = "8.5pt"  # slightly smaller in PDF columns so tables fit
 
 [consolidate_htmls]
-html_dir = "exports_short/Foundations/html"
-output_dir = "exports_short/Foundations/html"
+html_dir = "dist/export/short/Foundations/html"
+output_dir = "dist/export/short/Foundations/html"
 output_name = "Foundations_short.html"
 title = "Mathematik Foundations"
 
@@ -84,8 +84,8 @@ notebook_image_max_height = "none"
 section_break_after = "always"
 
 [consolidate_pdfs]
-pdf_dir = "exports_short/Foundations/pdf"
-output_dir = "exports_short/Foundations/pdf"
+pdf_dir = "dist/export/short/Foundations/pdf"
+output_dir = "dist/export/short/Foundations/pdf"
 output_name = "Foundations_short.pdf"
 title = "Mathematik Foundations"
 include_cover = true

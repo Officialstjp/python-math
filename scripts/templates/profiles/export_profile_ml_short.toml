@@ -7,7 +7,7 @@
 
 [export_notebooks]
 source_dir = "ml"
-output_dir = "exports_short/ml"
+output_dir = "dist/export/short/ml"
 formats = ["html", "pdf", "markdown"]
 workers = 8
 
@@ -16,6 +16,8 @@ workers = 8
 exclude_glossary_formats = []
 # Keep dedicated 99_Glossare notebooks even when glossary sections are omitted.
 keep_glossary_notebooks = true
+no_text_output = false
+expand_details = true
 
 [export_notebooks.styles.html]
 # Uncomment to tune exported HTML notebook pages.
@@ -42,8 +44,8 @@ image_max_height = "3.5in"
 image_margin = "0.08in auto 0.12in"
 
 [consolidate_htmls]
-html_dir = "exports_short/ml/html"
-output_dir = "exports_short/ml/html"
+html_dir = "dist/export/short/ml/html"
+output_dir = "dist/export/short/ml/html"
 output_name = "MachineLearning_Math.html"
 title = "Mathematische Grundlagen für Machine Learning"
 
@@ -67,8 +69,8 @@ notebook_image_max_height = "none"
 section_break_after = "always"
 
 [consolidate_pdfs]
-pdf_dir = "exports_short/ml/pdf"
-output_dir = "exports_short/ml/pdf"
+pdf_dir = "dist/export/short/ml/pdf"
+output_dir = "dist/export/short/ml/pdf"
 output_name = "MachineLearning_Math.pdf"
 title = "Mathematische Grundlagen für Machine Learning"
 include_cover = true
