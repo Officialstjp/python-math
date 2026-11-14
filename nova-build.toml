@@ -30,7 +30,7 @@ timeout = "15m"
 
 [[steps]]
 name = "Export Foundations (full)"
-run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--config", "scripts/templates/profiles/export_profile_schoen.toml"]
+run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--ci", "--config", "scripts/templates/profiles/export_profile_schoen.toml"]
 timeout = "45m"
 
 [[steps]]
@@ -40,7 +40,7 @@ timeout = "10m"
 
 [[steps]]
 name = "Export Foundations (short)"
-run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--config", "scripts/templates/profiles/export_profile_schoen_short.toml"]
+run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--ci", "--config", "scripts/templates/profiles/export_profile_schoen_short.toml"]
 timeout = "45m"
 
 [[steps]]
@@ -50,7 +50,7 @@ timeout = "10m"
 
 [[steps]]
 name = "Export ml (short)"
-run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--config", "scripts/templates/profiles/export_profile_ml_short.toml"]
+run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--ci", "--config", "scripts/templates/profiles/export_profile_ml_short.toml"]
 timeout = "30m"
 
 [[steps]]
