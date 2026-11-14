@@ -205,7 +205,7 @@ Für eine vektorwertige Funktion $\vec F: \mathbb{R}^n \to \mathbb{R}^m$ suchen 
 
 $$\vec F(\vec a + \vec h) \approx \vec F(\vec a) + \underbrace{J}_{\text{Jacobi-Matrix}} \cdot \vec h$$
 
-Die „Ableitung" ist jetzt keine einzelne Zahl mehr, sondern eine **Matrix** $J \in \mathbb{R}^{m \times n}$, die einen kleinen Eingabevektor $\vec h \in \mathbb{R}^n$ auf die resultierende Ausgabeänderung $\in \mathbb{R}^m$ abbildet. Das ist eine **lineare Abbildung** - genau wie in [02_Matrizen](../05_Vektoren_Matrizen/02_Matrizen.ipynb) gelernt.
+Die „Ableitung" ist jetzt keine einzelne Zahl mehr, sondern eine **Matrix** $J \in \mathbb{R}^{m \times n}$, die einen kleinen Eingabevektor $\vec h \in \mathbb{R}^n$ auf die resultierende Ausgabeänderung $\in \mathbb{R}^m$ abbildet. Das ist eine **lineare Abbildung** - genau wie in [02_Matrizen](../05_Vektoren_Matrizen/02_Matrizen.md) gelernt.
 
 #### Definition
 
@@ -234,7 +234,7 @@ $$J_f = \begin{pmatrix} \frac{\partial f}{\partial x_1} & \cdots & \frac{\partia
 
 #### Determinante der Jacobi-Matrix
 
-Bei einer quadratischen Jacobi-Matrix ($m = n$) hat die **Determinante** eine anschauliche Bedeutung, die direkt an das anknüpft, was wir in [02_Matrizen](../05_Vektoren_Matrizen/02_Matrizen.ipynb) über Determinanten gelernt haben:
+Bei einer quadratischen Jacobi-Matrix ($m = n$) hat die **Determinante** eine anschauliche Bedeutung, die direkt an das anknüpft, was wir in [02_Matrizen](../05_Vektoren_Matrizen/02_Matrizen.md) über Determinanten gelernt haben:
 
 $$|\det(J)| = \text{lokaler Flächenskalierungsfaktor}$$
 
@@ -256,7 +256,7 @@ $$
 
 ### 5. Die Hesse-Matrix - Krümmung in mehreren Dimensionen
 
-In der eindimensionalen Analysis haben wir gelernt (in [04 - Höhere Ableitungen](../07_Analysis/04_Hoehere_Ableitungen_und_Kurvendiskussion.ipynb)): Die **zweite Ableitung** $f''(x)$ beschreibt die **Krümmung** einer Funktion:
+In der eindimensionalen Analysis haben wir gelernt (in [04 - Höhere Ableitungen](../07_Analysis/04_Hoehere_Ableitungen_und_Kurvendiskussion.md)): Die **zweite Ableitung** $f''(x)$ beschreibt die **Krümmung** einer Funktion:
 
 - $f''(x) > 0$: Die Steigung nimmt zu → die Kurve krümmt sich **nach oben** (konvex / „Schüsselform")
 - $f''(x) < 0$: Die Steigung nimmt ab → die Kurve krümmt sich **nach unten** (konkav / „Hügelform")

@@ -51,7 +51,7 @@ Wenn wir eine Funktion $f(x)$ ableiten, erhalten wir $f'(x)$ - die **erste Ablei
     f'(x)  = 4*x**3 - 12*x + 8
     f''(x) = 12*(x**2 - 1)
     f'''(x)= 24*x
-    
+
 
 ### 2. Das Zusammenspiel von $f$, $f'$ und $f''$
 
@@ -100,7 +100,7 @@ Ein **Sattelpunkt** (auch Terrassenpunkt) ist eine Stelle, an der $f'(x_0) = 0$ 
     f'(0)  = 0
     f''(0) = 0 → keine Aussage!
     f'''(0)= 6 ≠ 0 → Sattelpunkt
-    
+
 
 ### 4. Wendepunkte bestimmen
 
@@ -173,7 +173,7 @@ In Python (für Notebook-Leser, PDF-Leser sehen nur die Ausgabe):
        lim(x→-∞) = -oo
     
     9. GRAPH → siehe Plot unten
-    
+
 
 
     
@@ -281,7 +281,7 @@ $f(x) = x^4$: $f'(0) = 0$, $f''(0) = 0$, aber $f''''(0) = 24 > 0$. Es liegt ein 
     Wendepunkt-Kandidaten: [-2*sqrt(3)/3, 2*sqrt(3)/3]
       x=-2*sqrt(3)/3: f=-80/9, f'''=-16*sqrt(3) → WP
       x=2*sqrt(3)/3: f=-80/9, f'''=16*sqrt(3) → WP
-    
+
 
 ---
 

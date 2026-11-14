@@ -123,7 +123,7 @@ Dies ist einer der ersten historischen Beweise, der Grenzwertbetrachtungen (Calc
          58     return anim
     ---> 60 anim = animate_circle_approx(Circle_Anim_Cfg)
          61 HTML(anim.to_jshtml())
-    
+
 
     NameError: name 'Circle_Anim_Cfg' is not defined
 

@@ -123,7 +123,7 @@ $$\int_0^3 x^2\, dx = \left[\frac{x^3}{3}\right]_0^3 = \frac{27}{3} - \frac{0}{3
     ∫ x² dx     = x**3/3  + C
     ∫ sin(x) dx = -cos(x)  + C
     ∫ eˣ dx     = exp(x)  + C
-    
+
 
 
     
@@ -216,7 +216,7 @@ $$\text{Strecke} = \int_a^b |v(t)|\,dt$$
     === Auswertung im markierten Zeitfenster ===
     s(4) - s(1) = 25.50 m
     v(4) - v(1) = 9.00 m/s
-    
+
 
 
     
@@ -227,7 +227,7 @@ $$\text{Strecke} = \int_a^b |v(t)|\,dt$$
     === Richtungswechsel-Beispiel ===
     Verschiebung: -2.50 m
     Tatsächlich zurückgelegte Strecke: 6.50 m
-    
+
 
 ---
 

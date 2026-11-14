@@ -146,7 +146,7 @@ Das Distributivgesetz ist die Grundlage für das Ausmultiplizieren von Klammern.
       2 + 3 * 4**2         =     50 ✓
       24 / 4 / 2           =    3.0 ✓
       24 / (4 / 2)         =   12.0 ✓
-    
+
 
 ---
 

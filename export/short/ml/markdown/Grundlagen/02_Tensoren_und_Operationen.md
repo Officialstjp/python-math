@@ -14,7 +14,7 @@ In diesem Notebook arbeiten wir mit **NumPy** - nicht weil es das beste ML-Frame
 - **Reduktionen** - Summe, Mittelwert, Maximum entlang von Achsen
 - **Softmax** - von rohen Zahlen zu Wahrscheinlichkeiten
 
-**Voraussetzungen:** [01 - Vektoren](../../Foundations/05_Vektoren_Matrizen/01_Grundlagen_der_Vektoren.ipynb), [02 - Matrizen](../../Foundations/05_Vektoren_Matrizen/02_Matrizen.ipynb)
+**Voraussetzungen:** [01 - Vektoren](../../Foundations/05_Vektoren_Matrizen/01_Grundlagen_der_Vektoren.md), [02 - Matrizen](../../Foundations/05_Vektoren_Matrizen/02_Matrizen.md)
 
 ---
 
@@ -62,7 +62,7 @@ for name, t in [("Skalar", skalar), ("Vektor", vektor),
     Vektor      shape=(3,)          ndim=1  size=3
     Matrix      shape=(2, 3)        ndim=2  size=6
     3D-Tensor   shape=(2, 3, 2)     ndim=3  size=12
-    
+
 
 ### 2. Reshaping - Gleiche Daten, andere Form
 
@@ -108,7 +108,7 @@ print(f"\nM.shape={M.shape}  ->  M.T.shape={M.T.shape}")
     v[:, None]: shape=(3, 1)  (Spaltenvektor)
     
     M.shape=(2, 3)  →  M.T.shape=(3, 2)
-    
+
 
 ### 3. Elementweise Operationen und Broadcasting
 
@@ -161,7 +161,7 @@ print(f"exp(A) =\n{np.exp(A).round(3)}")
     exp(A) =
     [[ 2.718  7.389]
      [20.086 54.598]]
-    
+
 
 ```python
 M    = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])  # (3,4)
@@ -186,7 +186,7 @@ print(col * row)
     [[ 10  20  30  40]
      [ 20  40  60  80]
      [ 30  60  90 120]]
-    
+
 
 ### 4. Matrixmultiplikation (Matmul)
 
@@ -238,7 +238,7 @@ print(f"Von Hand identisch: {np.allclose(C_manual, C)}")
      [190 260 330]
      [290 400 510]]
     Von Hand identisch: True
-    
+
 
 ```python
 np.random.seed(42)
@@ -257,7 +257,7 @@ print(Y.round(3))
      [ 1.11  -3.056]
      [-0.366 -3.801]
      [ 1.502 -1.124]]
-    
+
 
 #### Batched Matmul
 
@@ -285,7 +285,7 @@ print(f"Shared:   {A_batch.shape} @ {W_shared.shape} -> {(A_batch @ W_shared).sh
     Batched:  (2, 3, 4) @ (2, 4, 5) → (2, 3, 5)
     Batch[0] stimmt: True
     Shared:   (2, 3, 4) @ (4, 5) → (2, 3, 5)
-    
+
 
 ### 5. Reduktionen entlang von Achsen
 
@@ -329,7 +329,7 @@ print(f"\nZentriert (mu=0 pro Zeile):\n{X_centered}")
     [[-1.5 -0.5  0.5  1.5]
      [-1.5 -0.5  0.5  1.5]
      [-1.5 -0.5  0.5  1.5]]
-    
+
 
 ### 6. Softmax
 
@@ -406,7 +406,7 @@ print(f"Stabil: {softmax(z_gross).round(4)}")
     
     Naiv:   [nan nan nan]  ← Overflow
     Stabil: [0.2447 0.6652 0.09  ]
-    
+
 
 
     
@@ -429,7 +429,7 @@ print(f"Zeilensummen: {probs.sum(axis=1).round(6)}")
      [0.25   0.25   0.25   0.25  ]
      [0.0174 0.9479 0.0174 0.0174]]
     Zeilensummen: [1. 1. 1.]
-    
+
 
 #### Softmax + Cross-Entropy:
 
@@ -472,7 +472,7 @@ print(f"Identisch: {np.isclose(loss_a, loss_b)}")
     Loss (getrennt):  0.636499
     Loss (kombiniert): 0.636499
     Identisch: True
-    
+
 
 ---
 
@@ -553,7 +553,7 @@ Die **Matrixmultiplikation** ist die Kernoperation: $c_{ij} = \sum_k a_{ik} b_{k
 | **Reduktion** | z.B. $\sum_i a_{ij}$ | Eliminiert die `axis`-Dimension |
 | **Softmax** | $\frac{e^{z_i}}{\sum e^{z_j}}$ | Shape bleibt gleich |
 
-> **Nächster Schritt:** Die Logits kommen nicht aus dem Nichts - sie entstehen durch Gewichte, die *gelernt* werden. Wie? Über Gradienten. -> Weiter zu [03 - Optimierung und Backpropagation](03_Optimierung_und_Backpropagation.ipynb)
+> **Nächster Schritt:** Die Logits kommen nicht aus dem Nichts - sie entstehen durch Gewichte, die *gelernt* werden. Wie? Über Gradienten. -> Weiter zu [03 - Optimierung und Backpropagation](03_Optimierung_und_Backpropagation.md)
 
 ---
 

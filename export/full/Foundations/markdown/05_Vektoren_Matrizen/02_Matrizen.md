@@ -111,7 +111,7 @@ $$\begin{pmatrix}1 & 2\\3 & 4\end{pmatrix} \cdot \begin{pmatrix}5 & 6\\7 & 8\end
     A^T =
     [[1 3]
      [2 4]]
-    
+
 
 ## 4. Determinante
 
@@ -245,7 +245,7 @@ $$\left(\begin{array}{cc|c}2 & 3 & 7\\0 & -\frac{5}{2} & -\frac{5}{2}\end{array}
      [7 8 0]]
     det(M) = 27
     Handrechnung: 0 + 84 + 96 - 105 - 48 - 0 = 27 ✓
-    
+
 
 ## 7. Geometrische Interpretation: Lineare Abbildungen
 

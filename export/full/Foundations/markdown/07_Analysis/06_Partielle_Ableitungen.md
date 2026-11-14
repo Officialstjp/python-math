@@ -39,7 +39,7 @@ Wir können unsere `numerische_ableitung`-Funktion wiederverwenden, indem wir mi
     
     Partielle Ableitung ∂f/∂y bei (3, 4): 57.00000131
     Exakt: x² + 3y² = 57
-    
+
 
 ### 2. Der Gradient: Die Richtung des steilsten Anstiegs
 
@@ -101,7 +101,7 @@ Jetzt visualisieren wir das Ganze von oben: Eine 2D-Heatmap zeigt den Wert von $
       ∇f      = (8, 12)
       |∇f|    = 14.42 (Steilheit)
     
-    
+
 
 ---
 

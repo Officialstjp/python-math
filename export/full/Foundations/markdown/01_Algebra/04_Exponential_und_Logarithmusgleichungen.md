@@ -245,7 +245,7 @@ $$
       C-14 Halbwertszeit: T_½ = ln(2)/|k| = 5728 Jahre
       Bakterien Verdopplungszeit: T₂ = ln(2)/k = 1.98 Stunden
       10-fache Menge nach: t = ln(10)/k = 6.58 Stunden
-    
+
 
 ---
 

@@ -14,7 +14,7 @@ Die Antwort: **Gradienten**. Der Gradient sagt uns für jedes Gewicht, in welche
 - **Gradient Descent** - die Update-Regel und was die Lernrate bewirkt
 - **Stochastic Gradient Descent (SGD)** - warum wir mit Mini-Batches arbeiten
 
-**Voraussetzungen:** [02 - Ableitungen](../../Foundations/07_Analysis/02_Ableitungen.ipynb), [03 - Ableitungsregeln](../../Foundations/07_Analysis/03_Ableitungsregeln.ipynb), [08 - Multivariate Kettenregel](../../Foundations/07_Analysis/08_Multivariate_Kettenregel_und_Gradient.ipynb), [02 - Tensoren](02_Tensoren_und_Operationen.ipynb)
+**Voraussetzungen:** [02 - Ableitungen](../../Foundations/07_Analysis/02_Ableitungen.md), [03 - Ableitungsregeln](../../Foundations/07_Analysis/03_Ableitungsregeln.md), [08 - Multivariate Kettenregel](../../Foundations/07_Analysis/08_Multivariate_Kettenregel_und_Gradient.md), [02 - Tensoren](02_Tensoren_und_Operationen.md)
 
 ---
 
@@ -77,7 +77,7 @@ print(f"Max. Abweichung: {np.max(np.abs(grad_analytisch - grad_numerisch)):.2e}"
     Analytisch: [ 4. -6.]
     Numerisch:  [ 4. -6.]
     Max. Abweichung: 2.62e-11
-    
+
 
 ### 2. Die Kettenregel
 
@@ -139,7 +139,7 @@ print(f"Numerisch: dL/dw={dL_dw_num:.6f}")
     Forward:  z=0.7000, y=σ(z)=0.6682, L=(y-t)²=0.1101
     Backward: dL/dy=-0.6636 · dy/dz=0.2217 · dz/dw=2.0 = dL/dw=-0.294268
     Numerisch: dL/dw=-0.294268
-    
+
 
 ### 3. Der Computational Graph
 
@@ -220,7 +220,7 @@ print(f"L  = -log(p[{target}]) = {L:.4f}")
     z2 = [-0.0886 -0.089 ]
     p  = softmax(z2) = [0.5001 0.4999]
     L  = -log(p[0]) = 0.6929
-    
+
 
 ```python
 # ========= BACKWARD PASS =========
@@ -262,7 +262,7 @@ print(f"dL/db1 = {dL_db1.round(4)}")
     [[ 0.      0.     -0.0006]
      [ 0.      0.      0.0003]]
     dL/db1 = [-0.      0.     -0.0006]
-    
+
 
 ```python
 # Numerische Verifikation aller Gradienten
@@ -298,7 +298,7 @@ check_grad("b1", b1, dL_db1)
     b2     max|err| = 1.02e-11  ✓
     W1     max|err| = 7.26e-12  ✓
     b1     max|err| = 7.26e-12  ✓
-    
+
 
 ### 5. Gradient Descent
 
@@ -415,7 +415,7 @@ print(f"Finaler Loss: {losses[-1]:.4f}")
 ```
 
     Finaler Loss: 0.6744
-    
+
 
 
     
@@ -424,7 +424,7 @@ print(f"Finaler Loss: {losses[-1]:.4f}")
 
 
     Trainings-Genauigkeit: 60.0%
-    
+
 
 ---
 
@@ -498,7 +498,7 @@ Für Matmul $Z = XW$ gilt: $\partial \mathcal{L}/\partial W = X^T (\partial \mat
 | **Update-Regel** | $\theta \leftarrow \theta - \eta \nabla \mathcal{L}$ | Schritt bergab |
 | **Mini-Batch SGD** | $\frac{1}{B} \sum_{\text{Batch}} \nabla \mathcal{L}_i$ | Praxis-Standard |
 
-> **Nächster Schritt:** Wir haben jetzt alle Grundbausteine: Tensoren, Softmax, Cross-Entropy, Backpropagation, SGD. Zeit, daraus die Standardkomponenten eines neuronalen Netzes zusammenzusetzen. → Weiter zu [04 - Bausteine eines Neuronalen Netzes](../Bausteine/01_Lineare_Schichten_und_Aktivierungen.ipynb)
+> **Nächster Schritt:** Wir haben jetzt alle Grundbausteine: Tensoren, Softmax, Cross-Entropy, Backpropagation, SGD. Zeit, daraus die Standardkomponenten eines neuronalen Netzes zusammenzusetzen. → Weiter zu [04 - Bausteine eines Neuronalen Netzes](../Bausteine/01_Lineare_Schichten_und_Aktivierungen.md)
 
 ---
 

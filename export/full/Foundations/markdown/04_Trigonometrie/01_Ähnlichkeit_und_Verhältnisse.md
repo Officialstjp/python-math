@@ -46,15 +46,9 @@ $$\cos(\alpha) = \frac{\text{Ankathete}}{\text{Hypotenuse}} = \frac{AK}{H}$$
 
 $$\tan(\alpha) = \frac{\text{Gegenkathete}}{\text{Ankathete}} = \frac{GK}{AK}$$
 
-    <>:30: SyntaxWarning: invalid escape sequence '\c'
-    <>:30: SyntaxWarning: invalid escape sequence '\c'
-    C:\Users\stefa\AppData\Local\Temp\ipykernel_35876\3283533753.py:30: SyntaxWarning: invalid escape sequence '\c'
-      """
-    
-
 
     
-![png](01_%C3%84hnlichkeit_und_Verh%C3%A4ltnisse_files/01_%C3%84hnlichkeit_und_Verh%C3%A4ltnisse_4_1.png)
+![png](01_%C3%84hnlichkeit_und_Verh%C3%A4ltnisse_files/01_%C3%84hnlichkeit_und_Verh%C3%A4ltnisse_4_0.png)
     
 
 

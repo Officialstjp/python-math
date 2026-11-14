@@ -160,7 +160,7 @@ Das Prinzip ist immer dasselbe: Exponentialgleichungen löst man durch Logarithm
     2^x = 10  → x = 3.32193
     e^(2x) = 7 → x = 0.97296
     ln(x) = 3  → x = 20.08554
-    
+
 
 ---
 

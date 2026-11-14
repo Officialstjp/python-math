@@ -121,12 +121,12 @@ Machen wir daraus eine Python-Funktion! Wir können $h$ nicht wirklich Null setz
     Ableitung von f(x)=x² bei x=1: 2.000000  (exakt: 2)
     Ableitung von f(x)=x² bei x=3: 6.000000  (exakt: 6)
     Ableitung von g(x)=x³+2x bei x=2: 14.000001  (exakt: 14)
-    
+
 
     Bei x=1.0: Punkt (1.00, 1.00), Steigung ≈ 2.00
     Bei x=3.0: Punkt (3.00, 9.00), Steigung ≈ 6.00
     Bei x=2.0: Punkt (2.00, 12.00), Steigung ≈ 14.00
-    
+
 
 
     
@@ -159,7 +159,7 @@ f_abl = sp.diff(f_sym, x)
     Die Ableitung ist: g'(x) = 3*x**2 + 2
     
     g'(2) = 14  (das bestätigt unsere numerische Berechnung!)
-    
+
 
 ---
 

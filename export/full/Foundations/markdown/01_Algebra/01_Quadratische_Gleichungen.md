@@ -273,7 +273,7 @@ $u_2 = -1 < 0$ → keine reellen Lösungen daraus. Nur $u_1 = 4$ liefert $x = \p
       x⁴ - 3x² - 4 = 0
       u = -1 < 0 → verwirft (keine reelle Lsg.)
       Lösungen: x = ['-2', '2']
-    
+
 
 ---
 

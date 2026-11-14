@@ -155,7 +155,7 @@ Hier wird es algebraisch. Wir suchen alle $x$ in einem Intervall $[0, 2\pi]$ (bz
       α = 135°:  1.000000000000000
       α = 210°:  1.000000000000000
       α = 300°:  1.000000000000000
-    
+
 
 ---
 

@@ -14,7 +14,7 @@ Die **Informationstheorie** wurde 1948 von Claude Shannon begründet - ursprüng
 - **Die zentrale Beziehung** $H(p,q) = H(p) + D_{\text{KL}}(p \| q)$ und ihre Bedeutung
 - **Verbindung zum ML** - warum Cross-Entropy *der* Standard-Loss für Klassifikation ist
 
-**Voraussetzungen:** [03 - Wahrscheinlichkeitsrechnung](../../Foundations/08_Statistik_und_Wahrscheinlichkeit/03_Wahrscheinlichkeitsrechnung.ipynb), [04 - Verteilungen](../../Foundations/08_Statistik_und_Wahrscheinlichkeit/04_Verteilungen.ipynb), [00 - Verteilungen im ML-Kontext](../../ml/Grundlagen/00_Verteilungen_ML.ipynb) (insb. Multinomialverteilung)
+**Voraussetzungen:** [03 - Wahrscheinlichkeitsrechnung](../../Foundations/08_Statistik_und_Wahrscheinlichkeit/03_Wahrscheinlichkeitsrechnung.md), [04 - Verteilungen](../../Foundations/08_Statistik_und_Wahrscheinlichkeit/04_Verteilungen.md), [00 - Verteilungen im ML-Kontext](../../ml/Grundlagen/00_Verteilungen_ML.md) (insb. Multinomialverteilung)
 
 ---
 
@@ -40,7 +40,7 @@ Shannon stellte drei vernünftige Forderungen:
 | **Sicheres Ereignis = keine Information** | $p = 1$ enthält nichts Neues | $I(1) = -\log(1) = 0$ |
 | **Additivität** | Information unabhängiger Ereignisse addiert sich | $I(p_1 \cdot p_2) = I(p_1) + I(p_2)$ |
 
-Die *einzige* Funktion, die alle drei erfüllt, ist der **negative Logarithmus**. Die dritte Eigenschaft folgt direkt aus der Logarithmusregel $\log(a \cdot b) = \log(a) + \log(b)$, die wir aus [04 - Exponenten und Logarithmen](../../Foundations/00_Grundlagen/04_Exponenten_und_Logarithmen.ipynb) kennen.
+Die *einzige* Funktion, die alle drei erfüllt, ist der **negative Logarithmus**. Die dritte Eigenschaft folgt direkt aus der Logarithmusregel $\log(a \cdot b) = \log(a) + \log(b)$, die wir aus [04 - Exponenten und Logarithmen](../../Foundations/00_Grundlagen/04_Exponenten_und_Logarithmen.md) kennen.
 
 #### Was genau bedeutet "Bit" hier?
 

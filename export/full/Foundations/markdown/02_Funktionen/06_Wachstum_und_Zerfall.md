@@ -159,7 +159,7 @@ Das folgende Überblick zeigt, wie die verschiedenen Modelle auf reale Phänomen
     Nach 5730 Jahren: 50.0% übrig
     Nach 11460 Jahren: 25.0% übrig
     Nach 17190 Jahren: 12.5% übrig
-    
+
 
 ---
 

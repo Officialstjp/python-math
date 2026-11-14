@@ -81,7 +81,7 @@ $$s_{xy} = \frac{1}{n} \sum_{i=1}^{n} x_i y_i - \bar{x} \cdot \bar{y} = \overlin
     Mittelwerte:  x̄ = 5.9 h   |   ȳ = 61.0 Punkte
     Kovarianz:    s_xy = 39.70
     
-    
+
 
 
     
@@ -134,7 +134,7 @@ Um das Einheitenproblem der Kovarianz zu lösen, **normieren** wir: Wir teilen d
     
       Kontrolle (np.corrcoef): r = 0.9831
     
-    
+
 
 
     
@@ -232,7 +232,7 @@ Das zeigt: Die **Richtung** von $m$ (positiv/negativ) stimmt immer mit dem **Vor
       Hinweis: Manche Bücher schreiben äquivalent ŷ = a + bx.
     
       Kontrolle (np.polyfit): m = 6.5189, b = 22.5386
-    
+
 
 
     
@@ -288,7 +288,7 @@ Das Bestimmtheitsmaß ist das **Quadrat** des Korrelationskoeffizienten. Daher d
       r²  = 0.9831² = 0.9664
     
       ➜ 96.6 % der Streuung werden durch die Regression erklärt.
-    
+
 
 
     
@@ -373,7 +373,7 @@ Die folgende Code-Zelle setzt genau dieses Schema rechnerisch um und visualisier
     
       Prognose für Werbeausgaben = 25 T€:  Umsatz ≈ 128.7 T€
       Hinweis: Prognosen außerhalb des beobachteten Bereichs sind Extrapolationen und unsicherer.
-    
+
 
 
     

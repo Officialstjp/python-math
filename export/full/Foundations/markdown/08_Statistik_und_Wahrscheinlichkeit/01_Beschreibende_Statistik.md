@@ -48,7 +48,7 @@ Im Allgemeinen ist $N$ sehr viel größer als $n$, also $N \gg n$.
       Std.-Abw.:      1.69
     
     Verhältnis n/N:   0.4167%
-    
+
 
 ### 2. Merkmale und Merkmalsausprägungen
 
@@ -126,7 +126,7 @@ Jede höhere Skala erbt die Eigenschaften der niedrigeren. Je höher das Skalenn
     Temperatur (°C)    Intervall            Quantitativ         Stetig
               Alter   Verhältnis            Quantitativ        Diskret
       Einkommen (€)   Verhältnis            Quantitativ         Stetig
-    
+
 
 ### 4. Häufigkeitsverteilungen
 
@@ -156,7 +156,7 @@ $$\sum_{i=1}^{k} H_i = n \qquad \text{und} \qquad \sum_{i=1}^{k} h_i = 1$$
                    4                     1                 0.125                 1.000
     
     Kontrolle: Σ Hᵢ = 8  |  Σ hᵢ = 1.0000
-    
+
 
 ### 5. Diagrammtypen - Darstellung von Häufigkeiten
 
@@ -247,7 +247,7 @@ $$\bar{x}_w = \frac{2 \cdot 2 + 2 \cdot 3 + 1 \cdot 1 + 1 \cdot 2}{2 + 2 + 1 + 1
       Ungewichtetes Mittel:  x̄   = 2.00
       Gewichtetes Mittel:    x̄_w = 2.17
     
-    
+
 
 
     
@@ -312,7 +312,7 @@ Der **Modus** $x_{\text{mod}}$ ist der Wert, der am **häufigsten** vorkommt.
       x̃ (Median)     = 2,900 €
       Differenz       = 10,089 €
     
-    
+
 
 
     
@@ -437,7 +437,7 @@ $$s = \sqrt{s^2} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (x_i - \bar{x})^2}$$
       Varianz s²       = 218.09
       Std.-Abw. s      = 14.77
     
-    
+
 
 
     

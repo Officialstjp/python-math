@@ -58,7 +58,7 @@ $$\lim_{x \to 1} \frac{x^2 - 1}{x-1} = 2$$
         1.2500 |     2.250000 | → von rechts
         1.4500 |     2.450000 | → von rechts
         1.7000 |     2.700000 | → von rechts
-    
+
 
 ### 2. Einseitige Grenzwerte
 
@@ -152,7 +152,7 @@ Eine Funktion $f$ ist **stetig** an der Stelle $x_0$, wenn **drei Bedingungen** 
     lim sin(x)/x    für x→0:  1
     lim 1/x          für x→0⁺: oo
     lim 1/x          für x→0⁻: -oo
-    
+
 
 
     

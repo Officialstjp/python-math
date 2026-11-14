@@ -3,7 +3,7 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>tmpkhntuuih</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>Multivariate Kettenregel, Jacobi- und Hesse-Matrix</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -8122,7 +8122,7 @@ $$x = x(s, t), \qquad y = y(s, t)$$</p>
 <p>Das sagt: In der Nähe von $a$ verhält sich $f$ wie eine lineare Funktion. Die Zahl $f'(a)$ beschreibt, wie stark eine kleine Eingabeänderung $h$ das Ergebnis verändert.</p>
 <p>Für eine vektorwertige Funktion $\vec F: \mathbb{R}^n \to \mathbb{R}^m$ suchen wir genau die gleiche Idee: Was ist die <strong>bestmögliche lineare Approximation</strong>?</p>
 <p>$$\vec F(\vec a + \vec h) \approx \vec F(\vec a) + \underbrace{J}_{\text{Jacobi-Matrix}} \cdot \vec h$$</p>
-<p>Die „Ableitung" ist jetzt keine einzelne Zahl mehr, sondern eine <strong>Matrix</strong> $J \in \mathbb{R}^{m \times n}$, die einen kleinen Eingabevektor $\vec h \in \mathbb{R}^n$ auf die resultierende Ausgabeänderung $\in \mathbb{R}^m$ abbildet. Das ist eine <strong>lineare Abbildung</strong> - genau wie in <a href="../05_Vektoren_Matrizen/02_Matrizen.ipynb">02_Matrizen</a> gelernt.</p>
+<p>Die „Ableitung" ist jetzt keine einzelne Zahl mehr, sondern eine <strong>Matrix</strong> $J \in \mathbb{R}^{m \times n}$, die einen kleinen Eingabevektor $\vec h \in \mathbb{R}^n$ auf die resultierende Ausgabeänderung $\in \mathbb{R}^m$ abbildet. Das ist eine <strong>lineare Abbildung</strong> - genau wie in <a href="../05_Vektoren_Matrizen/02_Matrizen.html">02_Matrizen</a> gelernt.</p>
 <h4 id="Definition">Definition<a class="anchor-link" href="#Definition">¶</a></h4><p>Für $\vec F = \begin{pmatrix} F_1(x_1, \ldots, x_n) \\ \vdots \\ F_m(x_1, \ldots, x_n) \end{pmatrix}$ ist die Jacobi-Matrix:</p>
 <p>$$J = \begin{pmatrix}
 \frac{\partial F_1}{\partial x_1} &amp; \frac{\partial F_1}{\partial x_2} &amp; \cdots &amp; \frac{\partial F_1}{\partial x_n} \\[6pt]
@@ -8163,7 +8163,7 @@ $$x = x(s, t), \qquad y = y(s, t)$$</p>
 </tr>
 </tbody>
 </table>
-<h4 id="Determinante-der-Jacobi-Matrix">Determinante der Jacobi-Matrix<a class="anchor-link" href="#Determinante-der-Jacobi-Matrix">¶</a></h4><p>Bei einer quadratischen Jacobi-Matrix ($m = n$) hat die <strong>Determinante</strong> eine anschauliche Bedeutung, die direkt an das anknüpft, was wir in <a href="../05_Vektoren_Matrizen/02_Matrizen.ipynb">02_Matrizen</a> über Determinanten gelernt haben:</p>
+<h4 id="Determinante-der-Jacobi-Matrix">Determinante der Jacobi-Matrix<a class="anchor-link" href="#Determinante-der-Jacobi-Matrix">¶</a></h4><p>Bei einer quadratischen Jacobi-Matrix ($m = n$) hat die <strong>Determinante</strong> eine anschauliche Bedeutung, die direkt an das anknüpft, was wir in <a href="../05_Vektoren_Matrizen/02_Matrizen.html">02_Matrizen</a> über Determinanten gelernt haben:</p>
 <p>$$|\det(J)| = \text{lokaler Flächenskalierungsfaktor}$$</p>
 <p>Das heißt: Wenn die Abbildung $\vec F$ ein kleines Flächenstück (oder Volumenelement) transformiert, wird dessen Fläche (Volumen) um den Faktor $|\det(J)|$ gestreckt oder gestaucht. Bei Polarkoordinaten zum Beispiel: $|\det(J)| = r$ - Flächenelemente weiter vom Ursprung entfernt werden stärker gestreckt.</p>
 </div>
@@ -8201,7 +8201,7 @@ $$</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="5.-Die-Hesse-Matrix---Kr%C3%BCmmung-in-mehreren-Dimensionen">5. Die Hesse-Matrix - Krümmung in mehreren Dimensionen<a class="anchor-link" href="#5.-Die-Hesse-Matrix---Kr%C3%BCmmung-in-mehreren-Dimensionen">¶</a></h3><p>In der eindimensionalen Analysis haben wir gelernt (in <a href="../07_Analysis/04_Hoehere_Ableitungen_und_Kurvendiskussion.ipynb">04 - Höhere Ableitungen</a>): Die <strong>zweite Ableitung</strong> $f''(x)$ beschreibt die <strong>Krümmung</strong> einer Funktion:</p>
+<h3 id="5.-Die-Hesse-Matrix---Kr%C3%BCmmung-in-mehreren-Dimensionen">5. Die Hesse-Matrix - Krümmung in mehreren Dimensionen<a class="anchor-link" href="#5.-Die-Hesse-Matrix---Kr%C3%BCmmung-in-mehreren-Dimensionen">¶</a></h3><p>In der eindimensionalen Analysis haben wir gelernt (in <a href="../07_Analysis/04_Hoehere_Ableitungen_und_Kurvendiskussion.html">04 - Höhere Ableitungen</a>): Die <strong>zweite Ableitung</strong> $f''(x)$ beschreibt die <strong>Krümmung</strong> einer Funktion:</p>
 <ul>
 <li>$f''(x) &gt; 0$: Die Steigung nimmt zu → die Kurve krümmt sich <strong>nach oben</strong> (konvex / „Schüsselform")</li>
 <li>$f''(x) &lt; 0$: Die Steigung nimmt ab → die Kurve krümmt sich <strong>nach unten</strong> (konkav / „Hügelform")</li>

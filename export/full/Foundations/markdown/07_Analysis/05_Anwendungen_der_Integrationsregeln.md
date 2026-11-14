@@ -79,7 +79,7 @@ Bei bestimmten Integralen **müssen auch die Grenzen angepasst** werden!
     
     === Probe (Ableitung der Stammfunktion) ===
     d/dx [e^(x²)] = 2*x*exp(x**2)  ✓
-    
+
 
 ### 2. Partielle Integration
 
@@ -133,7 +133,7 @@ $$\int \ln x\, dx = x \ln x - \int x \cdot \frac{1}{x}\, dx = x \ln x - x + C$$
     
     === Probe ===
     d/dx [eˣ(x-1)] = x*exp(x)  ✓
-    
+
 
 ### 3. Überblick: Welche Methode wann?
 
@@ -165,7 +165,7 @@ Schnittpunkte: $-x^2 + 4 = x^2 - 2x \Rightarrow 2x^2 - 2x - 4 = 0 \Rightarrow x 
 
     Schnittpunkte: x = [-1, 2]
     Fläche = ∫₋₁² [f(x)-g(x)] dx = 9 = 9.0000
-    
+
 
 
     
@@ -199,7 +199,7 @@ $$\bar{T} = \frac{1}{24}\int_0^{24} \left[20 + 5\sin\left(\frac{\pi t}{12}\right
 
     Integral: ∫₀²⁴ T(t) dt = 480.00
     Mittlerer Wert: 480.00 / 24 = 20.00 °C
-    
+
 
 ---
 

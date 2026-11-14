@@ -146,7 +146,7 @@ Die Form von Satellitenschüsseln, Spiegeln und Mikrofonen folgt Parabeln. Der G
     Nullstellen: t1 = 2.45, t2 = -0.42s
     
      Der Ball kommt nach 2.45 Sekunden auf dem Boden an.
-    
+
 
 
     
@@ -164,7 +164,7 @@ Die Form von Satellitenschüsseln, Spiegeln und Mikrofonen folgt Parabeln. Der G
     Optimale Länge: x = 10.0m
     Optimale Breite: 10.0m
     Maximale Fläche: A = 100.0m²
-    
+
 
 
     

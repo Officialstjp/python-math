@@ -86,7 +86,7 @@ Damit kannst Du jedes Polynom ableiten!
       f(x)  = 4*x**5 - 3*x**2 + x
       f'(x) = 20*x**4 - 6*x + 1
     
-    
+
 
 ### 4. Die Produktregel
 
@@ -127,7 +127,7 @@ $$\boxed{\left[\frac{u(x)}{v(x)}\right]' = \frac{u'(x) \cdot v(x) - u(x) \cdot v
     Vereinfacht: (-x**2 + 2*x*(x - 3) - 1)/(x - 3)**2
     
     f'(5) = -3/2
-    
+
 
 ### 6. Die Kettenregel
 
@@ -173,7 +173,7 @@ $$\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}$$
     h(x)  = sin(x**2)
     h'(x) = 2*x*cos(x**2)
     
-    
+
 
 
     
@@ -312,7 +312,7 @@ $f'(2) = 2 \cdot 1^2 \cdot 8 = 16$
       f'(x) = x*(x - 1)**2*(5*x - 2)
       f'(2) = 16
     
-    
+
 
 ---
 

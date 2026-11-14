@@ -112,7 +112,7 @@ Wie verändert sich die Bildfläche?
 - Skalierungsfaktor $k = \frac{40}{20} = 2$.
 - Flächenfaktor $k^2 = 2^2 = 4$.
 - Die Pizza B hat die **4-fache Fläche** (also 4-mal so viel Belag und Teig) wie Pizza A.
-- Preisvergleich: $4 \times 5 € = 20 €$.
+- Preisvergleich: $4 \times 5\,\text{€} = 20\,\text{€}$.
 - Da Pizza B nur 15 € kostet, ist sie das deutlich bessere Angebot (mehr Pizza pro Euro).
 
 </details>
@@ -121,7 +121,7 @@ Wie verändert sich die Bildfläche?
 
 - Seitenlänge verdoppelt sich ($30 \text{m} \rightarrow 60 \text{m}$), also $k=2$.
 - Die Fläche vervierfacht sich ($k^2 = 4$).
-- Preis: $90.000 € \cdot 4 = 360.000 €$.
+- Preis: $90.000\,\text{€} \cdot 4 = 360.000\,\text{€}$.
 
 </details>
 

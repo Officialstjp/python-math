@@ -3,7 +3,7 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>tmpmrnhr1gt</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>Informationstheorie</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7901,7 +7901,7 @@ div.jp-Cell-inputWrapper:has(pre > span:only-child:empty) { display: none; }
 <li><strong>Die zentrale Beziehung</strong> $H(p,q) = H(p) + D_{\text{KL}}(p \| q)$ und ihre Bedeutung</li>
 <li><strong>Verbindung zum ML</strong> - warum Cross-Entropy <em>der</em> Standard-Loss für Klassifikation ist</li>
 </ul>
-<p><strong>Voraussetzungen:</strong> <a href="../../Foundations/08_Statistik_und_Wahrscheinlichkeit/03_Wahrscheinlichkeitsrechnung.ipynb">03 - Wahrscheinlichkeitsrechnung</a>, <a href="../../Foundations/08_Statistik_und_Wahrscheinlichkeit/04_Verteilungen.ipynb">04 - Verteilungen</a>, <a href="../../ml/Grundlagen/00_Verteilungen_ML.ipynb">00 - Verteilungen im ML-Kontext</a> (insb. Multinomialverteilung)</p>
+<p><strong>Voraussetzungen:</strong> <a href="../../Foundations/08_Statistik_und_Wahrscheinlichkeit/03_Wahrscheinlichkeitsrechnung.html">03 - Wahrscheinlichkeitsrechnung</a>, <a href="../../Foundations/08_Statistik_und_Wahrscheinlichkeit/04_Verteilungen.html">04 - Verteilungen</a>, <a href="../../ml/Grundlagen/00_Verteilungen_ML.html">00 - Verteilungen im ML-Kontext</a> (insb. Multinomialverteilung)</p>
 <hr/>
 </div>
 </div>
@@ -7943,7 +7943,7 @@ div.jp-Cell-inputWrapper:has(pre > span:only-child:empty) { display: none; }
 </tr>
 </tbody>
 </table>
-<p>Die <em>einzige</em> Funktion, die alle drei erfüllt, ist der <strong>negative Logarithmus</strong>. Die dritte Eigenschaft folgt direkt aus der Logarithmusregel $\log(a \cdot b) = \log(a) + \log(b)$, die wir aus <a href="../../Foundations/00_Grundlagen/04_Exponenten_und_Logarithmen.ipynb">04 - Exponenten und Logarithmen</a> kennen.</p>
+<p>Die <em>einzige</em> Funktion, die alle drei erfüllt, ist der <strong>negative Logarithmus</strong>. Die dritte Eigenschaft folgt direkt aus der Logarithmusregel $\log(a \cdot b) = \log(a) + \log(b)$, die wir aus <a href="../../Foundations/00_Grundlagen/04_Exponenten_und_Logarithmen.html">04 - Exponenten und Logarithmen</a> kennen.</p>
 <h4 id="Was-genau-bedeutet-%22Bit%22-hier?">Was genau bedeutet "Bit" hier?<a class="anchor-link" href="#Was-genau-bedeutet-%22Bit%22-hier?">¶</a></h4><p>Ein <strong>Bit</strong> ist die Antwort auf eine Ja/Nein-Frage. Daraus ergibt sich die Intuition:</p>
 <ul>
 <li><strong>1 Bit</strong> = eine faire Münze. Ergebnis "Kopf" mit $p = 0{,}5$: Du brauchst genau <strong>eine</strong> Ja/Nein-Frage ("War es Kopf?"), um das Ergebnis zu übermitteln. $I = -\log_2(0{,}5) = 1$ Bit.</li>

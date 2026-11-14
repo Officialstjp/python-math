@@ -240,7 +240,7 @@ $$
       Schritt 1: x₀ = 1 → Rest = 0, Quotient = x^2 - 5x + 6
       Schritt 2: abc-Formel auf x^2 - 5x + 6 → x = [3.0, 2.0]
       Alle Nullstellen: [1, 3.0, 2.0]
-    
+
 
 ---
 
