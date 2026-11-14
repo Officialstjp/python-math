@@ -1,0 +1,63 @@
+# Nova build: the published exports (docs/commit_exports.txt, steps 1-6) from a clean checkout of master.
+# The result lands in /srv/build/python-math/out; the site reads it from there.
+# Any change to this file needs a new approval: nova build approve python-math
+# Format: Nova docs/reference/Builds.md
+
+[build]
+branch = "master"
+timeout = "3h"
+
+[env]
+PIP_CACHE_DIR = "{cache}/pip"
+PLAYWRIGHT_BROWSERS_PATH = "{cache}/ms-playwright"
+MPLBACKEND = "Agg"
+
+[[steps]]
+name = "Python environment"
+run = ["python3", "-m", "venv", "{env}"]
+creates = "{env}/bin/python"
+timeout = "5m"
+
+[[steps]]
+name = "Dependencies"
+run = ["{env}/bin/python", "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "-r", "requirements.txt"]
+timeout = "20m"
+
+[[steps]]
+name = "Chromium for PDF"
+run = ["{env}/bin/python", "-m", "playwright", "install", "--only-shell", "chromium"]
+timeout = "15m"
+
+[[steps]]
+name = "Export Foundations (full)"
+run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--config", "scripts/templates/profiles/export_profile_schoen.toml"]
+timeout = "45m"
+
+[[steps]]
+name = "Consolidate Foundations (full)"
+run = ["{env}/bin/python", "scripts/py/consolidate_pdfs.py", "--config", "scripts/templates/profiles/export_profile_schoen.toml"]
+timeout = "10m"
+
+[[steps]]
+name = "Export Foundations (short)"
+run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--config", "scripts/templates/profiles/export_profile_schoen_short.toml"]
+timeout = "45m"
+
+[[steps]]
+name = "Consolidate Foundations (short)"
+run = ["{env}/bin/python", "scripts/py/consolidate_pdfs.py", "--config", "scripts/templates/profiles/export_profile_schoen_short.toml"]
+timeout = "10m"
+
+[[steps]]
+name = "Export ml (short)"
+run = ["{env}/bin/python", "scripts/py/export_notebooks.py", "--config", "scripts/templates/profiles/export_profile_ml_short.toml"]
+timeout = "30m"
+
+[[steps]]
+name = "Consolidate ml (short)"
+run = ["{env}/bin/python", "scripts/py/consolidate_pdfs.py", "--config", "scripts/templates/profiles/export_profile_ml_short.toml"]
+timeout = "10m"
+
+[publish]
+export = "dist/export"
+"notebooks/Foundations" = "Foundations"
