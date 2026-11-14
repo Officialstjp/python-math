@@ -51,12 +51,15 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import posixpath
 import re
 import subprocess
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
+from html import unescape
+from pathlib import Path, PurePosixPath
+from urllib.parse import quote, unquote
 
 try:
     from scripts.py.export_profile import (
@@ -682,6 +685,24 @@ def _replace_animation_outputs(cell: dict) -> dict:
     return cell
 
 
+def _notebook_title(nb: dict, stem: str) -> str:
+    """Page title: the first `## ` heading without its number ("01 - Zahlenmengen" -> "Zahlenmengen").
+
+    Notebooks open with the chapter as `# ` and the topic as the first `## `.
+    Falls back to the first `# ` heading, then to the file name.
+    """
+    first_h1 = None
+    for cell in nb.get("cells", []):
+        if cell.get("cell_type") != "markdown":
+            continue
+        for line in _cell_source_to_text(cell).splitlines():
+            if line.startswith("## "):
+                return re.sub(r"^\d+\s*[-–.:]\s*", "", line[3:].strip()) or line[3:].strip()
+            if line.startswith("# ") and first_h1 is None:
+                first_h1 = line[2:].strip()
+    return first_h1 or re.sub(r"^\d+[_ -]*", "", stem).replace("_", " ")
+
+
 def preprocess_notebook(
     notebook_path: Path,
     *,
@@ -722,6 +743,9 @@ def preprocess_notebook(
         return None
 
     nb = json.loads(raw)
+    # The export runs on a temp copy; without a title nbconvert would name the
+    # page after the temp file (<title>tmp_nba39c7</title>).
+    nb.setdefault("metadata", {}).setdefault("title", _notebook_title(nb, notebook_path.stem))
     filtered_cells = []
     skip_remaining_for_glossary = False
 
@@ -823,6 +847,70 @@ def _fix_markdown_image_paths(md_path: Path) -> None:
     md_path.write_text(text, encoding="utf-8")
 
 
+# Links between notebooks are written as relative paths to the .ipynb file
+# (`[02_Matrizen](../05_Vektoren_Matrizen/02_Matrizen.ipynb)`). Each export format
+# must point them at its own output, or they end up broken or, in PDFs, as
+# file:/// URLs that contain the local user's temp path.
+
+_HTML_LINK = re.compile(r'(<a\b[^>]*?\bhref=")([^"]*)("[^>]*>)(.*?)</a>', re.IGNORECASE | re.DOTALL)
+_MD_NOTEBOOK_LINK = re.compile(r"(?<!!)(\[[^\]]*\]\()([^)\s]+?)\.ipynb((?:#[^)\s]*)?\))")
+
+
+def _is_relative_url(url: str) -> bool:
+    """True for links like `../a/b.ipynb`; False for schemes, absolute paths and `#anchors`."""
+    url = url.strip()
+    return bool(url) and not url.startswith(("/", "#")) and not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", url)
+
+
+def _rewrite_notebook_links_html(html: str, ext: str) -> str:
+    """Point relative links to notebooks at the sibling export: `x.ipynb#a` -> `x.<ext>#a`."""
+
+    def _sub(match: re.Match) -> str:
+        href = match.group(2)
+        path, sep, fragment = href.partition("#")
+        if _is_relative_url(unescape(href)) and path.endswith(".ipynb"):
+            href = f"{path[: -len('.ipynb')]}.{ext}{sep}{fragment}"
+        return f"{match.group(1)}{href}{match.group(3)}{match.group(4)}</a>"
+
+    return _HTML_LINK.sub(_sub, html)
+
+
+def _rewrite_notebook_links_markdown(text: str) -> str:
+    """Markdown exports: `[t](x.ipynb)` -> `[t](x.md)` for relative links."""
+
+    def _sub(match: re.Match) -> str:
+        if not _is_relative_url(match.group(2)):
+            return match.group(0)
+        return f"{match.group(1)}{match.group(2)}.md{match.group(3)}"
+
+    return _MD_NOTEBOOK_LINK.sub(_sub, text)
+
+
+def _resolve_pdf_links(html: str, chapter: PurePosixPath, link_base: str | None) -> str:
+    """Leave no relative link in the HTML that Chromium prints.
+
+    Chromium resolves relative links against the document URL, which is a temp
+    file, so every relative link would become a file:/// URL with a local path.
+    With `link_base` set, links to notebooks become `<link_base>/<chapter>/<stem>.pdf`.
+    Every other relative link (and every notebook link without a base) is unwrapped
+    to its text. Absolute URLs, `mailto:` and `#anchors` stay as they are.
+    """
+
+    def _sub(match: re.Match) -> str:
+        href = unescape(match.group(2))
+        if not _is_relative_url(href):
+            return match.group(0)
+        path = href.partition("#")[0]
+        if link_base and path.endswith(".ipynb"):
+            target = posixpath.normpath(posixpath.join(chapter.as_posix(), unquote(path)))
+            if not target.startswith(".."):
+                url = f"{link_base.rstrip('/')}/{quote(target[: -len('.ipynb')] + '.pdf')}"
+                return f"{match.group(1)}{url}{match.group(3)}{match.group(4)}</a>"
+        return match.group(4)
+
+    return _HTML_LINK.sub(_sub, html)
+
+
 def _inject_html_export_css(
     html_path: Path,
     html_style: dict[str, str | None],
@@ -886,9 +974,11 @@ def _html_to_pdf(
     pdf_style: dict[str, str],
     *,
     side_by_side_config: dict | None = None,
+    chapter: PurePosixPath = PurePosixPath("."),
+    link_base: str | None = None,
 ) -> None:
     """Convert an HTML file to PDF via Playwright Chromium with print CSS injected."""
-    html = html_path.read_text(encoding="utf-8")
+    html = _resolve_pdf_links(html_path.read_text(encoding="utf-8"), chapter, link_base)
 
     # Apply side-by-side HTML transform before injecting print CSS
     if side_by_side_config and side_by_side_config.get("enabled", True):
@@ -967,6 +1057,7 @@ def export_notebook(
     expand_details: bool = False,
     keep_glossary_notebooks: bool = True,
     side_by_side_config: dict | None = None,
+    pdf_link_base: str | None = None,
 ) -> bool:
     """
     Export a single notebook to the given format.
@@ -1033,15 +1124,26 @@ def export_notebook(
             return False
         # Post-process HTML with layout fixes and optional sizing overrides.
         if fmt == "html":
+            html_file = dest_dir / f"{notebook.stem}.html"
             _inject_html_export_css(
-                dest_dir / f"{notebook.stem}.html",
+                html_file,
                 html_style,
                 side_by_side_config=side_by_side_config,
             )
+            html_file.write_text(
+                _rewrite_notebook_links_html(html_file.read_text(encoding="utf-8"), "html"),
+                encoding="utf-8",
+            )
 
-        # Post-process markdown to fix absolute image paths
+        # Post-process markdown to fix absolute image paths and notebook links
         if fmt == "markdown":
-            _fix_markdown_image_paths(dest_dir / f"{notebook.stem}.md")
+            md_file = dest_dir / f"{notebook.stem}.md"
+            _fix_markdown_image_paths(md_file)
+            if md_file.exists():
+                md_file.write_text(
+                    _rewrite_notebook_links_markdown(md_file.read_text(encoding="utf-8")),
+                    encoding="utf-8",
+                )
 
         # PDF: convert the intermediate HTML to PDF via Playwright, then clean up
         if fmt == "pdf":
@@ -1050,6 +1152,8 @@ def export_notebook(
             _html_to_pdf(
                 html_file, pdf_file, pdf_style,
                 side_by_side_config=side_by_side_config,
+                chapter=PurePosixPath(relative.parent.as_posix()),
+                link_base=pdf_link_base,
             )
             html_file.unlink(missing_ok=True)
 
@@ -1183,6 +1287,15 @@ def main() -> int:
         help=f"Number of parallel export workers (default: {settings['workers']}, use 1 to disable)",
     )
     parser.add_argument(
+        "--pdf-link-base",
+        default=settings.get("pdf_link_base", ""),
+        help=(
+            "Base URL of the published PDFs, e.g. https://example.org/learning/math/pdf/full. "
+            "Links between notebooks in PDFs point to <base>/<chapter>/<stem>.pdf; "
+            "without a base they become plain text"
+        ),
+    )
+    parser.add_argument(
         "--no-side-by-side",
         action="store_true",
         default=False,
@@ -1288,6 +1401,7 @@ def main() -> int:
                         expand_details=args.expand_details,
                         keep_glossary_notebooks=keep_glossary_notebooks,
                         side_by_side_config=sbs_config,
+                        pdf_link_base=args.pdf_link_base or None,
                     ): nb
                     for nb in fmt_notebooks
                 }
@@ -1308,6 +1422,7 @@ def main() -> int:
                     expand_details=args.expand_details,
                     keep_glossary_notebooks=keep_glossary_notebooks,
                     side_by_side_config=sbs_config,
+                    pdf_link_base=args.pdf_link_base or None,
                 )
                 if not success:
                     failed += 1

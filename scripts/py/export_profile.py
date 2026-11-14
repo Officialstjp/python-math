@@ -25,6 +25,9 @@ NOTEBOOK_EXPORT_DEFAULTS: dict[str, Any] = {
     "no_input": True,
     "notebook_glob": "**/*.ipynb",
     "workers": 4,
+    # Base URL of the published PDFs; links between notebooks in PDFs point there.
+    # Empty: those links become plain text (a relative link would print as file:///).
+    "pdf_link_base": "",
     "filters": {
         "exclude_glossary_formats": ["pdf"],
         "keep_glossary_notebooks": True,
